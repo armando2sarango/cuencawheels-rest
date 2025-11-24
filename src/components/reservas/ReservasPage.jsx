@@ -166,13 +166,10 @@ return (
         loading={loading}
         esAdmin={esAdministrador}
         onRefresh={cargarDatos}
-        onEliminar={handleEliminar}
+       onEliminar={handleEliminar}
         onCambiarEstado={handleCambiarEstado}
-        // PASAR LA FUNCIÓN AL HIJO
         onVerPagos={handleVerPagos} 
       />
-
-    {/* --- MODAL PARA MOSTRAR PAGOS (NUEVO) --- */}
     <Modal
         title={`Historial de Pagos - Reserva #${pagosDeReserva?.[0]?.IdReserva || '...'}`}
         open={modalPagosVisible}
