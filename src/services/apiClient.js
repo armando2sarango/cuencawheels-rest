@@ -6,7 +6,7 @@ if (!API_BASE_URL) {
 }
 
 export const apiClient = axios.create({
-  baseURL: API_BASE_URL || 'http://cuencautosgestion.runasp.net/api/v1', 
+  baseURL: API_BASE_URL || 'https://cuencautosgestion.runasp.net/api/v1', 
   headers: {
     'Content-Type': 'application/json', 
     Accept: 'application/json',
