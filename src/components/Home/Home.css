@@ -13,7 +13,11 @@ body {
 
 /* Hero Section */
 .hero-section {
-  background: linear-gradient(#31b8ca 100%);
+  background-image: url('../../files/img.jpg'), linear-gradient(#31b8ca 100%);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  
   border-radius: 16px;
   padding: 60px 40px;
   color: white;
@@ -22,17 +26,22 @@ body {
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
 }
 
+
 .hero-title {
-  color: white;
+  color: #ffffff;
   font-size: 48px;
   margin-bottom: 16px;
+  text-shadow: 0 3px 8px rgba(0, 0, 0, 0.9);
 }
 
 .hero-subtitle {
-  font-size: 20px;
-  color: rgba(255, 255, 255, 0.9);
+  font-size: 22px;
+  color: #0c0909;
   margin-bottom: 24px;
+  text-shadow: 0 3px 6px rgba(0, 0, 0, 0.7);
 }
+
+
 
 .hero-button {
   background: rgb(17, 91, 201);
