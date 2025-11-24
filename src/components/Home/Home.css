@@ -13,7 +13,7 @@ body {
 
 /* Hero Section */
 .hero-section {
-  background-image: url('../../files/img.jpg'), linear-gradient(#31b8ca 100%);
+  background-image: url('../../files/img.jpeg'), linear-gradient(#31b8ca 100%);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
