@@ -1,15 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Form, Input, Button, Card, Typography, Divider, Select, InputNumber, Spin } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import {
-  UserOutlined,
-  MailOutlined,
-  LockOutlined,
-  HomeOutlined,
-  IdcardOutlined,
-  LoadingOutlined
-} from '@ant-design/icons';
+import {UserOutlined,MailOutlined,LockOutlined,HomeOutlined,IdcardOutlined,LoadingOutlined} from '@ant-design/icons';
 import '../Login/Auth.css'; // CSS unificado
+import { validateName, validatePassword, validateAge, validateEmail, validateDocument } from '../../utils/validations';
 
 const { Title, Text, Link } = Typography;
 const { Option } = Select;
@@ -99,9 +93,9 @@ const RegisterView = ({ onRegister, loading }) => {
           onFinish={onFinish}
           className="register-form"
           initialValues={{ 
-            pais: 'Ecuador',
+            pais: '',
             tipoIdentificacion: 'Cédula',
-            edad: 18
+            edad: ""
           }}
           scrollToFirstError
         >
@@ -111,11 +105,19 @@ const RegisterView = ({ onRegister, loading }) => {
               name="nombre"
               label="Nombre"
               style={{ flex: 1 }}
-              rules={[
-                { required: true, message: 'Campo requerido' },
-                { pattern: /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, message: 'Solo letras permitidas' },
-                { min: 2, message: 'Mínimo 2 letras' }
-              ]}
+                rules={[
+                  { required: true, message: 'Campo requerido' },
+                  { 
+                    validator: async (_, value) => {
+                      const error = validateName(value);
+                      if (error) {
+                        // Antd espera un Promise.reject con el mensaje de error
+                        return Promise.reject(new Error(error));
+                      }
+                      return Promise.resolve();
+                    }
+                  },
+                ]}
             >
               <Input prefix={<UserOutlined />} placeholder="Ej: Juan" />
             </Form.Item>
@@ -125,10 +127,17 @@ const RegisterView = ({ onRegister, loading }) => {
               label="Apellido"
               style={{ flex: 1 }}
               rules={[
-                { required: true, message: 'Campo requerido' },
-                { pattern: /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, message: 'Solo letras permitidas' },
-                { min: 2, message: 'Mínimo 2 letras' }
-              ]}
+                      { required: true, message: 'Campo requerido' },
+                      { 
+                        validator: async (_, value) => {
+                          const error = validateName(value);
+                          if (error) {
+                            return Promise.reject(new Error(error));
+                          }
+                          return Promise.resolve();
+                        }
+                      },
+                    ]}
             >
               <Input prefix={<UserOutlined />} placeholder="Ej: Pérez" />
             </Form.Item>
@@ -139,9 +148,18 @@ const RegisterView = ({ onRegister, loading }) => {
             name="email"
             label="Correo Electrónico"
             rules={[
-              { required: true, message: 'Ingresa tu correo' },
-              { type: 'email', message: 'El formato del correo es inválido' },
-            ]}
+              { required: true, message: 'Ingresa tu correo' },
+              { 
+                validator: async (_, value) => {
+                  const error = validateEmail(value);
+                  if (error) {
+                    return Promise.reject(new Error(error));
+                  }
+                  return Promise.resolve();
+                }
+              },
+            ]}
+          
           >
             <Input prefix={<MailOutlined />} placeholder="nombre@ejemplo.com" />
           </Form.Item>
@@ -186,13 +204,15 @@ const RegisterView = ({ onRegister, loading }) => {
               style={{ width: '120px' }}
               rules={[
                 { required: true, message: 'Requerido' },
-                { type: 'number', min: 18, message: 'Mayor de 18' },
-                { type: 'number', max: 100, message: 'No válida' }
+                { type: 'number', min: 18, message: 'Debes ser mayor de 18 años.' },
+                { type: 'number', max: 70, message: 'La edad máxima permitida es 70 años.' } 
               ]}
             >
               <InputNumber 
                 style={{ width: '100%' }}
                 placeholder="18"
+                min={18} 
+                max={70}
               />
             </Form.Item>
 
@@ -245,14 +265,22 @@ const RegisterView = ({ onRegister, loading }) => {
             name="password"
             label="Contraseña"
             rules={[
-              { required: true, message: 'Crea una contraseña' },
-              { min: 6, message: 'Debe tener al menos 6 caracteres' }
-            ]}
+                  { required: true, message: 'Crea una contraseña' },
+                  { 
+                    validator: async (_, value) => {
+                      const error = validatePassword(value);
+                      if (error) {
+                        return Promise.reject(new Error(error));
+                      }
+                      return Promise.resolve();
+                    }
+                  },
+                ]}
             hasFeedback
           >
             <Input.Password 
               prefix={<LockOutlined />} 
-              placeholder="Mínimo 6 caracteres" 
+              placeholder="Min. 8 chars, Mayús, Minús, Número y Símbolo"
             />
           </Form.Item>
 
