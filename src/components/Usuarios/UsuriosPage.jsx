@@ -1,108 +1,131 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import UsuariosView from './UsuariosView';
-import { message } from 'antd';
-
-import { 
-  fetchUsuarios, 
-  createUsuarioThunk, 
-  updateUsuarioThunk, 
-  deleteUsuarioThunk 
-} from '../../store/usuarios/thunks';
-
+import { notification } from 'antd';
+import {fetchUsuarios,createUsuarioThunk,updateUsuarioThunk,deleteUsuarioThunk } from '../../store/usuarios/thunks';
 const UsuariosPage = () => {
+
   const dispatch = useDispatch();
   const { usuarios, loading, error } = useSelector(state => state.usuarios);
+  const [api, contextHolder] = notification.useNotification();
 
   useEffect(() => {
     dispatch(fetchUsuarios());
   }, [dispatch]);
-
-  // Función auxiliar para mapear del Formulario -> Backend DTO
-  const mapearUsuarioDTO = (values, idUsuario = 0) => {
-    return {
-      IdUsuario: idUsuario, // 0 si es crear
-      Nombre: values.Nombre,
-      Apellido: values.Apellido,
-      Email: values.Email,
-      Contrasena: values.Contrasena, 
-      Direccion: values.Direccion,
-      Edad: values.Edad ? parseInt(values.Edad) : null,
-      Pais: values.Pais,
-      TipoIdentificacion: values.TipoIdentificacion,
-      Identificacion: values.Identificacion,
-      UsuarioCorreo: values.UsuarioCorreo,
-      Rol: values.Rol,
-      UsuarioCorreo: values.UsuarioCorreo || values.Email,
-    };
-  };
-
+  const mapearUsuarioDTO = (values, idUsuario = 0) => ({
+    IdUsuario: idUsuario,
+    Nombre: values.Nombre,
+    Apellido: values.Apellido,
+    Email: values.Email,
+    Contrasena: values.Contrasena,
+    Direccion: values.Direccion,
+    Edad: values.Edad ? parseInt(values.Edad) : null,
+    Pais: values.Pais,
+    TipoIdentificacion: values.TipoIdentificacion,
+    Identificacion: values.Identificacion,
+    UsuarioCorreo: values.UsuarioCorreo || values.Email,
+    Rol: values.Rol
+  });
   const handleCrear = async (formValues) => {
     try {
       const nuevoUsuario = mapearUsuarioDTO(formValues, 0);
-      console.log("Creando usuario:", nuevoUsuario); // Debug
-      
       await dispatch(createUsuarioThunk(nuevoUsuario)).unwrap();
-      
-      message.success("Usuario creado correctamente");
+
+      api.success({
+        message: 'Usuario creado correctamente',
+        placement: 'topRight',
+        duration: 3,
+      });
+
       dispatch(fetchUsuarios());
       return true;
+
     } catch (err) {
-      console.error(err);
-      const msg = err.message || err || "Error al crear usuario";
-      message.error(msg);
+      api.error({
+        message: 'Error al crear usuario',
+        description: err.message || 'Ocurrió un error.',
+        placement: 'topRight',
+        duration: 4,
+      });
       return false;
     }
   };
-
   const handleEditar = async (formValues) => {
     try {
-      // OJO: formValues aquí trae los datos del formulario del modal
-      // Necesitamos asegurarnos de pasar el ID que viene aparte o dentro
-      const usuarioEditado = mapearUsuarioDTO(formValues, formValues.IdUsuario);
+      const usuarioEditado = mapearUsuarioDTO(
+        formValues, 
+        formValues.IdUsuario
+      );
 
       await dispatch(updateUsuarioThunk({
         id: usuarioEditado.IdUsuario,
-        body: usuarioEditado
+        body: usuarioEditado,
       })).unwrap();
 
-      message.success("Usuario actualizado correctamente");
+      api.success({
+        message: 'Usuario actualizado correctamente',
+        placement: 'topRight',
+        duration: 3,
+      });
+
       dispatch(fetchUsuarios());
       return true;
+
     } catch (err) {
-      console.error(err);
-      message.error("Error al actualizar usuario");
+      api.error({
+        message: 'Error al actualizar usuario',
+        description: err.message || 'No se pudo actualizar.',
+        placement: 'topRight',
+        duration: 4,
+      });
       return false;
     }
   };
-
   const handleEliminar = async (id) => {
     try {
       const result = await dispatch(deleteUsuarioThunk(id)).unwrap();
+
       if (result.success) {
-        message.success("Usuario eliminado correctamente");
+        api.success({
+          message: 'Usuario eliminado correctamente',
+          placement: 'topRight',
+          duration: 3,
+        });
       } else {
-        message.error("El servidor no pudo eliminar el usuario");
+        api.error({
+          message: 'El servidor no eliminó el usuario',
+          placement: 'topRight',
+          duration: 4,
+        });
       }
-      // Actualizamos la lista (aunque el slice ya lo hace localmente)
+
       dispatch(fetchUsuarios());
       return true;
+
     } catch (err) {
-      console.error(err);
-      message.error("Error al eliminar usuario");
+      api.error({
+        message: 'Error al eliminar usuario',
+        description: err.message || 'No se pudo eliminar.',
+        placement: 'topRight',
+        duration: 4,
+      });
       return false;
     }
   };
 
   return (
-    <UsuariosView
-      usuarios={usuarios}
-      loading={loading}
-      error={error}
-      onCrear={handleCrear}
-      onEditar={handleEditar}
-      onEliminar={handleEliminar}
-    />
+    <>
+      {contextHolder}
+
+      <UsuariosView
+        usuarios={usuarios}
+        loading={loading}
+        error={error}
+        onCrear={handleCrear}
+        onEditar={handleEditar}
+        onEliminar={handleEliminar}
+      />
+    </>
   );
 };
 

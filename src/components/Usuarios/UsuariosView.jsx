@@ -1,15 +1,7 @@
 import React, { useState,useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, Select, message, InputNumber, Row, Col, Tag } from 'antd';
-import { 
-  UserOutlined, 
-  MailOutlined, 
-  PhoneOutlined, 
-  HomeOutlined, 
-  IdcardOutlined,
-  LockOutlined,
-  GlobalOutlined
-} from '@ant-design/icons';
-
+import { UserOutlined,MailOutlined,PhoneOutlined,HomeOutlined,IdcardOutlined,LockOutlined,GlobalOutlined} from '@ant-design/icons';
+import { validateName, validatePassword, validateAge, validateEmail, validateDocument } from '../../utils/validations';
 const { Option } = Select;
 
 const UsuariosView = ({ usuarios, loading, error, onCrear, onEditar, onEliminar }) => {
@@ -51,7 +43,8 @@ const UsuariosView = ({ usuarios, loading, error, onCrear, onEditar, onEliminar 
       form.setFieldsValue({ 
         Rol: "Cliente",
         TipoIdentificacion: "Cédula",
-        Pais: "Ecuador"
+        Pais: "Ecuador",
+        Contrasena: 'temporal123'
       });
     }
     setModalVisible(true);
@@ -166,9 +159,17 @@ const UsuariosView = ({ usuarios, loading, error, onCrear, onEditar, onEliminar 
                 name="Nombre" 
                 label="Nombre" 
                 rules={[
-                  { required: true },
-                  { pattern: /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, message: 'Solo letras' }
-                ]}
+                  { required: true, message: 'El nombre es obligatorio' },
+                  { 
+                    validator: async (_, value) => {
+                      const error = validateName(value);
+                      if (error) {
+                        return Promise.reject(new Error(error));
+                      }
+                      return Promise.resolve();
+                    }
+                  },
+                ]}
               >
                 <Input prefix={<UserOutlined />} />
               </Form.Item>
@@ -178,9 +179,17 @@ const UsuariosView = ({ usuarios, loading, error, onCrear, onEditar, onEliminar 
                 name="Apellido" 
                 label="Apellido" 
                 rules={[
-                   { required: true },
-                   { pattern: /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, message: 'Solo letras' }
-                ]}
+                   { required: true, message: 'El apellido es obligatorio' },
+                   { 
+                      validator: async (_, value) => {
+                        const error = validateName(value);
+                        if (error) {
+                          return Promise.reject(new Error(error));
+                        }
+                        return Promise.resolve();
+                      }
+                    },
+                ]}
               >
                 <Input prefix={<UserOutlined />} />
               </Form.Item>
@@ -189,20 +198,48 @@ const UsuariosView = ({ usuarios, loading, error, onCrear, onEditar, onEliminar 
 
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="Email" label="Email" rules={[{ required: true, type: 'email' }]}>
+              <Form.Item name="Email" label="Email" rules={[
+                  { required: true, message: 'El correo es obligatorio' },
+                  { 
+                    validator: async (_, value) => {
+                      const error = validateEmail(value);
+                      if (error) {
+                        return Promise.reject(new Error(error));
+                      }
+                      return Promise.resolve();
+                    }
+                  },
+                ]}>
                 <Input prefix={<MailOutlined />} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item 
-                name="Contrasena" 
-                label="Contraseña" 
-                rules={[{ required: !usuarioActual, message: 'Requerida para crear' }]}
-                help={usuarioActual ? "Dejar vacío para mantener la actual" : null}
-              >
-                <Input.Password prefix={<LockOutlined />} placeholder={usuarioActual ? "********" : "Nueva contraseña"} />
-              </Form.Item>
-            </Col>
+              <Form.Item 
+                name="Contrasena" 
+                label="Contraseña" 
+                rules={[
+                  { required: !usuarioActual, message: 'Contraseña requerida para crear' },
+                  { 
+                    validator: async (_, value) => {
+                        if (!value) return Promise.resolve(); 
+
+                        const error = validatePassword(value);
+                        if (error) {
+                          return Promise.reject(new Error(error));
+                        }
+                        return Promise.resolve();
+                    }
+                  },
+                ]}
+                help={usuarioActual ? "Dejar vacío para mantener la actual" : "Min. 8 chars, Mayús, Minús, Número y Símbolo"}
+                hasFeedback={!!form.getFieldValue('Contrasena')} 
+              >
+                <Input.Password 
+                  prefix={<LockOutlined />} 
+                  placeholder={usuarioActual ? "********" : "Nueva contraseña"} 
+                />
+              </Form.Item>
+            </Col>
           </Row>
 
           <Row gutter={16}>
@@ -231,9 +268,23 @@ const UsuariosView = ({ usuarios, loading, error, onCrear, onEditar, onEliminar 
 
           <Row gutter={16}>
             <Col span={8}>
-              <Form.Item name="Edad" label="Edad" rules={[{ type: 'number', min: 18, max: 100 }]}>
-                <InputNumber style={{ width: '100%' }} />
-              </Form.Item>
+                        <Form.Item
+                          name="edad"
+                          label="Edad"
+                          style={{ width: '120px' }}
+                          rules={[
+                            { required: true, message: 'Requerido' },
+                            { type: 'number', min: 18, message: 'Debes ser mayor de 18 años.' },
+                            { type: 'number', max: 70, message: 'La edad máxima permitida es 70 años.' } 
+                          ]}
+                        >
+                          <InputNumber 
+                            style={{ width: '100%' }}
+                            placeholder="18"
+                            min={18} 
+                            max={70}
+                          />
+                        </Form.Item>
             </Col>
             <Col span={8}>
               <Form.Item
@@ -273,15 +324,6 @@ const UsuariosView = ({ usuarios, loading, error, onCrear, onEditar, onEliminar 
                   <Option value="Administrador">Administrador</Option>
                 </Select>
               </Form.Item>
-            </Col>
-            <Col span={12}>
-               <Form.Item name="Genero" label="Género">
-                 <Select>
-                   <Option value="Masculino">Masculino</Option>
-                   <Option value="Femenino">Femenino</Option>
-                   <Option value="Otro">Otro</Option>
-                 </Select>
-               </Form.Item>
             </Col>
           </Row>
 
