@@ -1,15 +1,17 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { notification, Modal } from 'antd'; // Importamos Modal
+import { ExclamationCircleOutlined } from '@ant-design/icons';
 import AutosView from './AutosView';
 import { createCarritoThunk } from '../../store/carrito/thunks';
-import { useNavigate } from 'react-router-dom';
-import { fetchVehiculos, createVehiculoThunk, updateVehiculoThunk, deleteVehiculoThunk,buscarVehiculosThunk} from '../../store/autos/thunks';
-import { message,notification } from 'antd';
-import { getUserId,setCarritoId,isAdmin,isAuthenticated} from '../../services/auth';
+import { fetchVehiculos,createVehiculoThunk, updateVehiculoThunk, deleteVehiculoThunk, buscarVehiculosThunk } from '../../store/autos/thunks';
+import { getUserId, setCarritoId, isAdmin, isAuthenticated } from '../../services/auth';
 const AutosPage = () => {
   const dispatch = useDispatch();
- const navigate = useNavigate();
- const [api, contextHolder] = notification.useNotification();
+  const navigate = useNavigate();
+  const [api, contextHolder] = notification.useNotification();
+  const [modal, contextHolderModal] = Modal.useModal();
   const autosState = useSelector((state) => state.autos);
   
   let vehicles = [];
@@ -31,73 +33,43 @@ const AutosPage = () => {
   const cargarVehiculos = () => {
     dispatch(fetchVehiculos());
   };
-  const handleBuscar = async (filtros) => {
-    try {
-      // filtros trae: { categoria: 'Sedán', transmision: 'Manual', estado: 'Disponible' }
-      await dispatch(buscarVehiculosThunk(filtros)).unwrap();
-      // No hace falta message.success, solo se actualiza la lista
-    } catch (error) {
-      console.error(error);
-      message.error("Error al realizar la búsqueda");
-    }
-  };
 
-  const handleCrear = async (vehiculoData) => {
-    try {
-      const resultado = await dispatch(createVehiculoThunk(vehiculoData)).unwrap();
-      dispatch(fetchVehiculos());
-      return true;
-    } catch (error) {
-      message.error('Error al crear el vehículo: ' + (error.message || 'Error desconocido'));
-      return false;
-    }
+  const getErrorMessage = (error) => {
+    let msg = 'Error desconocido.';
+    if (typeof error === 'string') msg = error;
+    else if (error?.message) msg = error.message;
+    if (error?.ExceptionMessage) msg = error.ExceptionMessage;
+    return msg;
   };
-
-  const handleEditar = async (id, vehiculoData) => {
-    try {
-      const resultado = await dispatch(updateVehiculoThunk({ id, body: vehiculoData })).unwrap();
-      dispatch(fetchVehiculos());
-      return true;
-    } catch (error) {
-      message.error('Error al actualizar el vehículo: ' + (error.message || 'Error desconocido'));
-      return false;
+  const handleCheckAuthAndOpenModal = () => {
+    const isAuth = isAuthenticated();
+    if (!isAuth) {
+      modal.confirm({
+        title: 'Iniciar sesión requerido',
+        icon: <ExclamationCircleOutlined />,
+        content: 'Para reservar un vehículo necesitas acceder a tu cuenta. ¿Deseas ir a iniciar sesión ahora?',
+        okText: 'Sí, ir al Login',
+        cancelText: 'Seguir viendo',
+        onOk: () => {
+          navigate('/login');
+        },
+        onCancel: () => {
+        },
+      });
+      
+      return false; 
     }
+    
+    return true;
   };
-  const handleCheckAuthAndOpenModal = (auto) => {
-        if (!isAuthenticated()) {
-            // Usamos la API del hook para notificar
-            api.warning({ 
-                message: 'Autenticación Requerida', 
-                description: 'Debes iniciar sesión para agregar vehículos al carrito.',
-                placement: 'topLeft',
-                duration: 3 
-            });
-            
-            // Retrasamos la navegación
-            setTimeout(() => {
-                navigate('/login');
-            }, 3000); 
-            return; 
-        }
-        
-        // Si está autenticado, llamamos a la función de la vista para abrir el modal
-        // NOTA: Para hacer esto, debemos asegurarnos de que AutosView reciba la función de abrir el modal.
-        // Ya que AutosPage no tiene acceso a abrirModalReserva, el check debe ir directamente en la vista.
-    };
-const handleAgregarCarrito = async (idVehiculo, fechas) => {
-// if (!isAuthenticated()) {
-//         message.warning('Debes iniciar sesión para agregar vehículos al carrito.');
-//         navigate('/login'); // LO MANDA AL LOGIN
-//         return false; 
-//     }
-    try {
-      const idUsuario = getUserId(); 
-      if (!idUsuario) {
-        message.warning('Debes iniciar sesión.');
+  const handleAgregarCarrito = async (idVehiculo, fechas) => {
+    const idUsuario = getUserId(); 
+    if (!idUsuario) {
+        console.error("Error lógico: handleAgregarCarrito llamado sin usuario");
         return false; 
-      }
+    }
 
-      // Llamamos al API
+    try {
       const respuesta = await dispatch(createCarritoThunk({
           IdUsuario: idUsuario, 
           IdVehiculo: idVehiculo, 
@@ -107,49 +79,55 @@ const handleAgregarCarrito = async (idVehiculo, fechas) => {
       const idCarritoNuevo = respuesta.IdCarrito || respuesta.idCarrito || (respuesta.data && respuesta.data.IdCarrito);
 
       if (idCarritoNuevo) {
-          console.log("💾 Guardando nuevo ID de Carrito:", idCarritoNuevo);
           setCarritoId(idCarritoNuevo); 
-      } else {
-          console.warn("⚠️ El backend no devolvió el IdCarrito. Revisa la consola 'RESPUESTA AL AGREGAR'");
-      }
-      message.success('Vehículo añadido exitosamente');
+      } 
+
+      api.success({
+        message: 'Agregado al carrito',
+        description: 'El vehículo se ha añadido a tu carrito exitosamente.',
+        placement: 'topRight',
+        duration: 3,
+      });
       return true;
 
     } catch (error) {
-       message.error('Error al agregar');
+       api.error({
+        message: 'Error al agregar',
+        description: getErrorMessage(error),
+        placement: 'topRight',
+        duration: 4,
+      });
        return false;
     }
-};
-
-  const handleEliminar = async (id) => {
-    try {
-      await dispatch(deleteVehiculoThunk(id)).unwrap();
-      dispatch(fetchVehiculos());
-      return true;
-    } catch (error) {
-      message.error('Error al eliminar el vehículo: ' + (error.message || 'Error desconocido'));
-      return false;
-    }
   };
+  const handleBuscar = async (filtros) => {
+    try { await dispatch(buscarVehiculosThunk(filtros)).unwrap(); } 
+    catch (error) { api.error({ message: 'Error búsqueda', description: getErrorMessage(error) }); }
+  };
+  const handleCrear = async (d) => { try { await dispatch(createVehiculoThunk(d)).unwrap(); dispatch(fetchVehiculos()); api.success({ message: 'Creado', description: 'Éxito' }); return true; } catch (e) { api.error({ message: 'Error', description: getErrorMessage(e) }); return false; } };
+  const handleEditar = async (id, d) => { try { await dispatch(updateVehiculoThunk({id, body: d})).unwrap(); dispatch(fetchVehiculos()); api.success({ message: 'Editado', description: 'Éxito' }); return true; } catch (e) { api.error({ message: 'Error', description: getErrorMessage(e) }); return false; } };
+  const handleEliminar = async (id) => { try { await dispatch(deleteVehiculoThunk(id)).unwrap(); dispatch(fetchVehiculos()); api.success({ message: 'Eliminado', description: 'Éxito' }); return true; } catch (e) { api.error({ message: 'Error', description: getErrorMessage(e) }); return false; } };
+
   return (
     <>
-    {contextHolder} 
-    <AutosView
-      autos={vehicles}
-      loading={loading}
-      error={error}
-      onCrear={handleCrear}
-      onEditar={handleEditar}
-      onEliminar={handleEliminar}
-      onRefresh={cargarVehiculos}
-      onAgregarCarrito={handleAgregarCarrito}
-      setCarritoId
-      onBuscar={handleBuscar}
-      isAdmin={esAdministrador}
-     checkAuth={isAuthenticated}
-      navigate={navigate}
-      api={api}
-    />
+      {contextHolder} 
+      {contextHolderModal}
+      
+      <AutosView
+        autos={vehicles}
+        loading={loading}
+        error={error}
+        onCrear={handleCrear}
+        onEditar={handleEditar}
+        onEliminar={handleEliminar}
+        onRefresh={cargarVehiculos}
+        onAgregarCarrito={handleAgregarCarrito}
+        onBuscar={handleBuscar}
+        isAdmin={esAdministrador}
+        checkAuth={handleCheckAuthAndOpenModal} 
+        navigate={navigate}
+        api={api}
+      />
     </>
   );
 };

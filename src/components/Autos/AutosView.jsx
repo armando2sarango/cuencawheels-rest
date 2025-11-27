@@ -53,23 +53,12 @@ const abrirModalReserva = (auto) => {
     setModalReservaVisible(true);
   };
 const handleInitialReserveClick = (auto) => {
-    if (!checkAuth()) {  // ✅ Usa la prop
-        api.warning({ 
-            message: 'Acceso Restringido',
-            description: 'Debes iniciar sesión para agregar vehículos al carrito.',
-            placement: 'topLeft',
-            duration: 3 
-        });
-        
-        setTimeout(() => {
-            navigate('/login');
-        }, 3000); 
-
-        return; 
+    // Solo ejecutamos checkAuth(). Si devuelve false, el padre muestra la alerta.
+    // Si devuelve true, procedemos a abrir el modal.
+    if (checkAuth()) {
+        abrirModalReserva(auto);
     }
-    
-    abrirModalReserva(auto);
-};
+  };
 const handleConfirmarReserva = async () => {
     if (!fechasReserva || fechasReserva.length === 0) {
       message.error("Por favor selecciona las fechas de renta");
