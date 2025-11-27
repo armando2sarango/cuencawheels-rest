@@ -5,24 +5,20 @@ import { notification } from 'antd';
 import LoginView from './LoginView';
 import { loginThunk } from '../../store/usuarios/thunks';
 import { setAuth } from '../../services/auth';
-
 const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [api, contextHolder] = notification.useNotification();
-
   const handleLogin = async (email, password, rememberMe) => {
     setLoading(true);
     setError(null);
-    
     try {
       const credentials = {
         Email: email,
         Contrasena: password
       };
-
       const respuestaApi = await dispatch(loginThunk(credentials)).unwrap();
 
       if (!respuestaApi) {
@@ -50,23 +46,17 @@ const LoginPage = () => {
         Rol:       usuario.Rol || usuario.rol,
         carritoId: carritoId 
       });
-
-      // Recordarme
       if (rememberMe) {
         localStorage.setItem('rememberMe', 'true');
       } else {
         localStorage.removeItem('rememberMe');
       }
-
-      // ✅ NOTIFICACIÓN DE ÉXITO ELEGANTE
       api.success({
         message: 'Ingreso correcto',
         description: `¡Bienvenido ${usuario.Nombre} ${usuario.Apellido}!`,
         placement: 'topRight',
         duration: 3,
       });
-
-      // Redirigir después de mostrar la notificación
       setTimeout(() => {
         navigate('/home');
       }, 500);
@@ -75,8 +65,6 @@ const LoginPage = () => {
       console.error('Error en login:', err);
       const errorMessage = typeof err === 'string' ? err : (err.message || 'Error al iniciar sesión');
       setError(errorMessage);
-      
-      // ❌ NOTIFICACIÓN DE ERROR
       api.error({
         message: 'Error de autenticación',
         description: errorMessage,
