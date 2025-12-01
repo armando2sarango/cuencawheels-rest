@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'; 
 import { useDispatch, useSelector } from 'react-redux';
-import { message, notification, Modal, Button, Table, Tag, Empty, Typography } from 'antd'; 
+import { notification, Modal, Button, Table, Tag, Empty, Typography } from 'antd'; 
 import { FilePdfOutlined } from '@ant-design/icons';
 import ReservasView from './ReservasView';
 import { fetchReservas, fetchReservasIdUsuario, deleteReservaThunk, updateEstadoReservaThunk } from '../../store/reservas/thunks';
@@ -31,17 +31,26 @@ const ReservasPage = () => {
     } else if (idUsuario) {
       dispatch(fetchReservasIdUsuario(idUsuario));
     } else {
-      message.warning("Inicia sesión para ver tus reservas.");
+      api.warning({ 
+        message: 'Sesión requerida',
+        description: 'Inicia sesión para ver tus reservas.' 
+      });
     }
   };
 
   const handleEliminar = async (idReserva) => {
     try {
       await dispatch(deleteReservaThunk(idReserva)).unwrap();
-      message.success("Reserva eliminada/cancelada correctamente");
+      api.success({ 
+        message: 'Eliminado', 
+        description: 'Reserva eliminada/cancelada correctamente' 
+      });
       cargarDatos(); 
     } catch (error) {
-      message.error("No se pudo eliminar la reserva.");
+      api.error({ 
+        message: 'Error', 
+        description: 'No se pudo eliminar la reserva.' 
+      });
     }
   };
 
@@ -50,22 +59,37 @@ const ReservasPage = () => {
     setModalPagosVisible(true);
     
     try {
-      message.loading({ content: 'Cargando facturas...', key: 'fetch_facturas' });
-      const facturas = await dispatch(fetchFacturasByUsuarioThunk(idUsuario)).unwrap();
+      api.info({ 
+        message: 'Cargando facturas...', 
+        key: 'fetch_facturas',
+        duration: 0 
+      });
       
+      const facturas = await dispatch(fetchFacturasByUsuarioThunk(idUsuario)).unwrap();
       const facturasDeReserva = facturas.filter(f => f.IdReserva === idReserva);
       
       setPagosDeReserva(facturasDeReserva);
-      message.success({ content: 'Facturas cargadas', key: 'fetch_facturas' });
+      
+      api.success({ 
+        message: 'Facturas cargadas', 
+        key: 'fetch_facturas' 
+      });
     } catch (error) {
       setPagosDeReserva([]);
-      message.error({ content: 'Error al cargar facturas', key: 'fetch_facturas' });
+      api.error({ 
+        message: 'Error al cargar facturas', 
+        key: 'fetch_facturas' 
+      });
     }
   };
 
   const handleCambiarEstado = async (idReserva, nuevoEstado, registro) => {
     try {
-      message.loading({ content: 'Procesando...', key: 'estado_update' });
+      api.info({ 
+        message: 'Procesando...', 
+        key: 'estado_update',
+        duration: 0 
+      });
 
       await dispatch(updateEstadoReservaThunk({ 
         id: idReserva, 
@@ -82,30 +106,23 @@ const ReservasPage = () => {
         nuevoEstadoVehiculo = 'Disponible';
       }
 
-      if (nuevoEstadoVehiculo && registro?.IdVehiculo) {
-        console.log('🔍 Obteniendo datos del vehículo:', registro.IdVehiculo);
-        
-        const vehiculoCompleto = await dispatch(fetchVehiculoById(registro.IdVehiculo)).unwrap();
-        
+      if (nuevoEstadoVehiculo && registro?.IdVehiculo) { 
+        const vehiculoCompleto = await dispatch(fetchVehiculoById(registro.IdVehiculo)).unwrap();   
         if (vehiculoCompleto) {
           const payloadVehiculo = {
             ...vehiculoCompleto,
             Estado: nuevoEstadoVehiculo
           };
-
-          console.log('🔄 Actualizando vehículo a estado:', nuevoEstadoVehiculo);
-          
           await dispatch(updateVehiculoThunk({ 
             id: registro.IdVehiculo, 
             body: payloadVehiculo 
           })).unwrap();
-
-          console.log('✅ Vehículo actualizado correctamente');
         }
       }
 
-      message.success({ 
-        content: `Reserva ${nuevoEstado.toLowerCase()} correctamente`, 
+      api.success({ 
+        message: 'Estado actualizado',
+        description: `Reserva ${nuevoEstado.toLowerCase()} correctamente`, 
         key: 'estado_update' 
       });
 
@@ -113,9 +130,9 @@ const ReservasPage = () => {
       return true;
 
     } catch (error) {
-      console.error('❌ Error al cambiar estado:', error);
-      message.error({ 
-        content: error.message || 'Error al procesar', 
+      api.error({ 
+        message: 'Error',
+        description: error.message || 'Error al procesar', 
         key: 'estado_update' 
       });
       return false;
@@ -136,7 +153,6 @@ const ReservasPage = () => {
         onVerPagos={handleVerPagos} 
       />
 
-      {/* Modal de Facturas */}
       <Modal
         title={`Facturas - Reserva #${pagosDeReserva?.[0]?.IdReserva || '...'}`}
         open={modalPagosVisible}

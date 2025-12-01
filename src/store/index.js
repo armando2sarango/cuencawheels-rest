@@ -5,7 +5,6 @@ import usuariosReducer from './usuarios/usuariosReducer'
 import facturasReducer from './facturas/facturasReducer'
 import carritosReducer from './carrito/carritoReducer'
 import reservasReducer from './reservas/reservasReducer'
-import pagosReducer from './pagos/pagosReducer';
 export const store = configureStore({
   reducer: {
     autos: autosReducer,
@@ -13,7 +12,6 @@ export const store = configureStore({
     facturas:facturasReducer,
     carritos:carritosReducer,
     reservas:reservasReducer,
-    pagos:pagosReducer,
   }
 });
 

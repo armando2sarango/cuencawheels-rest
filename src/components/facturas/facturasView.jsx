@@ -2,10 +2,8 @@ import React, { useState } from 'react';
 import { Table, Button, Modal, Form, Input, InputNumber, DatePicker, message } from 'antd';
 import moment from 'moment';
 
-const FacturasView = ({ facturas, loading, onCrear, onEditar, onEliminar }) => {
+const FacturasView = ({ facturas, loading, onCrear, onEditar }) => {
   const [modalVisible, setModalVisible] = useState(false);
-  const [modalEliminarVisible, setModalEliminarVisible] = useState(false);
-  const [facturaAEliminar, setFacturaAEliminar] = useState(null);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [facturaActual, setFacturaActual] = useState(null);
 
@@ -44,7 +42,6 @@ const FacturasView = ({ facturas, loading, onCrear, onEditar, onEliminar }) => {
       const facturaDto = {
         ...values,
         IdFactura: facturaActual ? facturaActual.IdFactura : undefined,
-        // Aseguramos que el IdReserva se envíe correctamente
         IdReserva: facturaActual ? facturaActual.IdReserva : values.IdReserva,
         FechaEmision: values.FechaEmision ? values.FechaEmision.toISOString() : null
       };
@@ -58,20 +55,6 @@ const FacturasView = ({ facturas, loading, onCrear, onEditar, onEliminar }) => {
       message.error("Verifica los campos");
     } finally {
       setSubmitLoading(false);
-    }
-  };
-
-  const abrirModalEliminar = (factura) => {
-    setFacturaAEliminar(factura);
-    setModalEliminarVisible(true);
-  };
-
-  const confirmarEliminar = async () => {
-    try {
-      await onEliminar(facturaAEliminar.IdFactura);
-      setModalEliminarVisible(false);
-    } catch (err) {
-      message.error("Error al eliminar");
     }
   };
 
@@ -104,7 +87,6 @@ const FacturasView = ({ facturas, loading, onCrear, onEditar, onEliminar }) => {
       render: (_, factura) => (
         <div style={{ display: "flex", gap: "10px" }}>
           <Button type="primary" size="small" onClick={() => abrirModal(factura)}>Editar</Button>
-          <Button danger size="small" onClick={() => abrirModalEliminar(factura)}>Eliminar</Button>
         </div>
       )
     }
@@ -126,8 +108,6 @@ const FacturasView = ({ facturas, loading, onCrear, onEditar, onEliminar }) => {
         rowKey={(f) => f.IdFactura}
         pagination={{ pageSize: 8 }}
       />
-
-      {/* MODAL CREAR/EDITAR */}
       <Modal
         title={facturaActual ? "Editar Factura" : "Crear Factura"}
         open={modalVisible}
@@ -136,12 +116,6 @@ const FacturasView = ({ facturas, loading, onCrear, onEditar, onEliminar }) => {
         confirmLoading={submitLoading}
       >
         <Form form={form} layout="vertical">
-          
-          {/* ✅ CAMBIO CLAVE AQUÍ: 
-              Si es Edición (facturaActual existe), ocultamos o deshabilitamos el campo.
-              Aquí he optado por deshabilitarlo (disabled) para que se vea pero no se toque.
-              Si prefieres que desaparezca por completo, usa la condición: {!facturaActual && (...)}
-          */}
           <Form.Item 
             name="IdReserva" 
             label="ID Reserva" 
@@ -150,7 +124,7 @@ const FacturasView = ({ facturas, loading, onCrear, onEditar, onEliminar }) => {
             <InputNumber 
                 style={{ width: '100%' }} 
                 placeholder="Ej: 1" 
-                disabled={!!facturaActual} // Bloqueado si se está editando
+                disabled={!!facturaActual} 
             />
           </Form.Item>
 
@@ -176,18 +150,6 @@ const FacturasView = ({ facturas, loading, onCrear, onEditar, onEliminar }) => {
           </Form.Item>
 
         </Form>
-      </Modal>
-
-      {/* MODAL ELIMINAR */}
-      <Modal
-        title="Confirmar eliminación"
-        open={modalEliminarVisible}
-        okText="Eliminar"
-        okButtonProps={{ danger: true }}
-        onCancel={() => setModalEliminarVisible(false)}
-        onOk={confirmarEliminar}
-      >
-        <p>¿Seguro que deseas eliminar la factura <strong>#{facturaAEliminar?.IdFactura}</strong>?</p>
       </Modal>
     </div>
   );

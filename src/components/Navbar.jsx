@@ -6,8 +6,7 @@ import {
   CarOutlined,
   ShoppingCartOutlined,
   CalendarOutlined,
-  LogoutOutlined,
-  DollarOutlined
+  LogoutOutlined
 } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { isAdmin, isAuthenticated } from '../services/auth';
@@ -20,8 +19,6 @@ const Navbar = () => {
   const navigate = useNavigate();
   const userIsAdmin = isAdmin();
   const userIsLogged = isAuthenticated();
-
-  // Detectar la opción seleccionada del menú
   const selectedKey = (() => {
     if (location.pathname.startsWith('/autos')) return 'autos';
     if (location.pathname.startsWith('/home')) return 'Home';
@@ -29,7 +26,7 @@ const Navbar = () => {
     if (location.pathname.startsWith('/reservas')) return 'reservas';
     if (location.pathname.startsWith('/carrito')) return 'carrito';
     if (location.pathname.startsWith('/facturas')) return 'facturas';
-    if (location.pathname.startsWith('/pagos')) return 'pagos';
+
     return 'inicio';
   })();
 
@@ -47,8 +44,6 @@ const Navbar = () => {
     <Header className="navbar-header">
 
       <div className="navbar-container">
-
-        {/* ---- LOGO + MENÚ ---- */}
         <div className="navbar-left">
 
           <div className="navbar-logo">
@@ -60,7 +55,7 @@ const Navbar = () => {
             className="navbar-menu"
             mode="horizontal"
             selectedKeys={[selectedKey]}
-            overflowedIndicator={null}   // 🚀 quita los "tres puntos"
+            overflowedIndicator={null}   
           >
 
             <Menu.Item key="Home" icon={<HomeOutlined />}>
@@ -95,16 +90,8 @@ const Navbar = () => {
               </Menu.Item>
             )}
 
-            {userIsAdmin && (
-              <Menu.Item key="pagos" icon={<DollarOutlined />}>
-                <Link to="/pagos">Pagos</Link>
-              </Menu.Item>
-            )}
-
           </Menu>
         </div>
-
-        {/* ---- BOTÓN DERECHA ---- */}
         {userIsLogged ? (
           <Button type="primary" icon={<LogoutOutlined />} onClick={handleLogout}>
             Cerrar Sesión
