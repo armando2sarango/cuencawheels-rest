@@ -1,158 +1,259 @@
 import React from 'react';
 import { 
-  Table, Card, Button, Typography, Space, Image, Empty, Tag, Divider, Row, Col 
+  Table, Card, Button, Typography, Space, Image, Empty, Row, Col, Tag,Tooltip
 } from 'antd';
-import { DeleteOutlined, ShoppingCartOutlined, CalendarOutlined } from '@ant-design/icons';
-import dayjs from 'dayjs';
+import { DeleteOutlined, ShoppingCartOutlined, CreditCardOutlined,EyeOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 
 const CarritoView = ({ 
   items = [], 
   loading, 
-  error, 
   onEliminar, 
   onReservar,
-  totalGeneral 
+  onVerDetalles
 }) => {
+  
   const columns = [
     {
       title: 'Vehículo',
       dataIndex: 'UrlImagen', 
       key: 'imagen',
-      width: 100,
+      width: 130,
       render: (url, record) => (
         <div style={{ textAlign: 'center' }}>
             <Image 
-                width={80} 
-                src={url} 
-                // Imagen por defecto si no viene en el JSON
+                width={100} 
+                src={url || 'https://via.placeholder.com/150?text=Auto'} 
                 fallback="https://via.placeholder.com/150?text=Auto" 
                 alt={record.VehiculoNombre}
-                style={{ borderRadius: '8px' }}
+                style={{ borderRadius: '8px', objectFit: 'cover', height: '60px' }}
+                preview={false}
             />
         </div>
       ),
     },
     {
-      title: 'Detalles',
+      title: 'Información',
       key: 'detalles',
       render: (_, record) => (
-        <div>
-          <Text strong style={{ fontSize: '16px' }}>{record.VehiculoNombre}</Text>
-          <br />
-          {record.Marca && <Text type="secondary">{record.Marca} {record.Modelo}</Text>}
-        </div>
+        <Space direction="vertical" size={0}>
+          <Text strong style={{ fontSize: '16px' }}>
+            {record.VehiculoNombre || record.Nombre || 'Vehículo sin nombre'}
+          </Text>
+          <Text type="secondary">
+            {record.Marca && record.Modelo ? `${record.Marca} ${record.Modelo}` : record.Marca || record.Modelo || 'Sin información'}
+          </Text>
+          {record.CategoriaNombre && <Tag color="blue">{record.CategoriaNombre}</Tag>}
+        </Space>
       ),
     },
     {
-      title: 'Fechas de Renta',
-      key: 'fechas',
-      render: (_, record) => {
-        const inicio = dayjs(record.FechaInicio);
-        const fin = dayjs(record.FechaFin);
-        const dias = fin.diff(inicio, 'day') + 1;
-        
-        return (
-          <div>
-            <p style={{ margin: 0 }}><small>Desde:</small> <strong>{inicio.format('DD/MM/YYYY')}</strong></p>
-            <p style={{ margin: 0 }}><small>Hasta:</small> <strong>{fin.format('DD/MM/YYYY')}</strong></p>
-            <Tag color="orange" style={{ marginTop: 4 }}>{dias} {dias === 1 ? 'día' : 'días'}</Tag>
-          </div>
-        );
-      }
-    },
-    {
-      title: 'Precio',
+      title: 'Tarifa',
       key: 'precio',
       align: 'right',
       render: (_, record) => {
-        const subtotal = parseFloat(record.Subtotal || 0);
-
+        // Obtenemos el precio unitario de diferentes posibles campos
+        const precio = record.PrecioPorDia || record.PrecioDia || 0;
         return (
-          <div>
-            <Text strong style={{ fontSize: '16px', color: '#52c41a' }}>${subtotal.toFixed(2)}</Text>
-          </div>
+            <div style={{ textAlign: 'right' }}>
+                <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '4px' }}>
+                  Precio por día
+                </Text>
+                <Text strong style={{ color: '#52c41a', fontSize: '18px' }}>
+                    ${parseFloat(precio).toFixed(2)}
+                </Text>
+            </div>
         );
-      }
+      },
     },
     {
-      title: 'Acción',
-      key: 'accion',
-      align: 'center',
-      render: (_, record) => (
+  title: '',
+  key: 'acciones',
+  width: 120,
+  render: (_, record) => (
+    <Space>
+      <Tooltip title="Ver detalles">
         <Button 
-          type="text" 
+          icon={<EyeOutlined />} 
+          onClick={() => onVerDetalles && onVerDetalles(record.IdVehiculo)} 
+        />
+      </Tooltip>
+      <Tooltip title="Eliminar">
+        <Button 
           danger 
           icon={<DeleteOutlined />} 
           onClick={() => onEliminar(record.IdItem)} 
-        >
-          Eliminar
-        </Button>
-      ),
-    },
+        />
+      </Tooltip>
+    </Space>
+  ),
+}
   ];
-  const totalCalculado = items.reduce((acc, item) => acc + (item.Subtotal || 0), 0);
 
   if (loading && items.length === 0) {
-    return <div style={{ padding: 50, textAlign: 'center' }}>Cargando carrito...</div>;
+    return (
+      <div style={{ 
+        padding: '100px 50px', 
+        textAlign: 'center',
+        minHeight: '400px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div>
+          <div className="spinner" style={{
+            border: '4px solid #f3f3f3',
+            borderTop: '4px solid #1890ff',
+            borderRadius: '50%',
+            width: '50px',
+            height: '50px',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 20px'
+          }}></div>
+          <Text type="secondary" style={{ fontSize: '16px' }}>Cargando tu carrito...</Text>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
-      <Title level={2}><ShoppingCartOutlined /> Mi Carrito</Title>
+      <Title level={2} style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <ShoppingCartOutlined style={{ color: '#1890ff' }} /> 
+        Mi Carrito
+      </Title>
       
       <Row gutter={24}>
         <Col xs={24} lg={16}>
           {items.length === 0 ? (
             <Empty 
-                description="Tu carrito está vacío" 
+                description={
+                  <span>
+                    <p style={{ fontSize: '16px', marginBottom: '8px' }}>
+                      No tienes vehículos seleccionados
+                    </p>
+                    <Text type="secondary">Explora nuestro catálogo y agrega tus favoritos</Text>
+                  </span>
+                }
                 image={Empty.PRESENTED_IMAGE_SIMPLE} 
-                style={{ background: '#fff', padding: '40px', borderRadius: '8px' }}
+                style={{ 
+                  background: '#fff', 
+                  padding: '80px 40px', 
+                  borderRadius: '12px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)' 
+                }}
             >
-                <Button type="primary" href="/autos">Ir a ver Autos</Button>
+                <Button 
+                  type="primary" 
+                  href="/autos" 
+                  size="large"
+                  icon={<ShoppingCartOutlined />}
+                  style={{ marginTop: '20px', height: '45px', fontSize: '16px' }}
+                >
+                  Ir al Catálogo
+                </Button>
             </Empty>
           ) : (
             <Table 
               dataSource={items} 
               columns={columns} 
-              rowKey={(record) => record.IdItem || Math.random()} 
+              rowKey={(record) => record.IdItem || record.IdVehiculo || Math.random()} 
               pagination={false}
-              scroll={{ x: 600 }}
-              style={{ background: '#fff', borderRadius: '8px', overflow: 'hidden' }}
+              style={{ 
+                background: '#fff', 
+                borderRadius: '12px', 
+                overflow: 'hidden', 
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)' 
+              }}
             />
           )}
         </Col>
 
         <Col xs={24} lg={8}>
-          <Card title="Resumen del Pedido" style={{ position: 'sticky', top: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-              <Text>Subtotal ({items.length} vehículos):</Text>
-              <Text>${totalCalculado.toFixed(2)}</Text>
-            </div>
-            <Divider />
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-              <Title level={4}>Total:</Title>
-              <Title level={4} type="success">${totalCalculado.toFixed(2)}</Title>
+          <Card 
+            title={
+              <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
+                📋 Resumen de Reserva
+              </div>
+            }
+            style={{ 
+              position: 'sticky', 
+              top: 20, 
+              boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+              borderRadius: '12px',
+              overflow: 'hidden'
+            }}
+          >
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                marginBottom: '16px',
+                padding: '12px',
+                background: '#f0f5ff',
+                borderRadius: '8px'
+              }}>
+                <Text style={{ fontSize: '15px' }}>Vehículos seleccionados:</Text>
+                <Text strong style={{ fontSize: '18px', color: '#1890ff' }}>
+                  {items.length}
+                </Text>
+              </div>
+              
+              <div style={{ 
+                background: '#fffbe6', 
+                padding: '12px', 
+                borderRadius: '8px',
+                border: '1px solid #ffe58f',
+                marginBottom: '16px'
+              }}>
+                <Text type="secondary" style={{ fontSize: '13px' }}>
+                  💡 <strong>Nota:</strong> El monto total se calculará al seleccionar las fechas de renta en el siguiente paso.
+                </Text>
+              </div>
             </div>
             
             <Button 
               type="primary" 
               size="large" 
               block 
-              icon={<CalendarOutlined />} 
+              icon={<CreditCardOutlined />} 
               disabled={items.length === 0}
               onClick={onReservar} 
-              style={{ marginTop: '15px', height: '50px', fontSize: '18px' }}
+              style={{ 
+                height: '50px', 
+                fontSize: '16px', 
+                fontWeight: 'bold',
+                background: items.length === 0 ? undefined : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                borderColor: items.length === 0 ? undefined : 'transparent',
+                boxShadow: items.length === 0 ? undefined : '0 4px 15px rgba(102, 126, 234, 0.4)'
+              }}
             >
-              Generar Reserva
+              {items.length === 0 ? 'Carrito Vacío' : 'Proceder al Pago'}
             </Button>
-            <Button type="link" block href="/autos" style={{ marginTop: 10 }}>
-              Seguir buscando
+            
+            <Button 
+              type="link" 
+              block 
+              href="/autos" 
+              style={{ 
+                marginTop: 12, 
+                fontSize: '14px',
+                height: '40px' 
+              }}
+            >
+              ➕ Agregar más vehículos
             </Button>
           </Card>
         </Col>
       </Row>
+
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 };

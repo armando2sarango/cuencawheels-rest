@@ -36,7 +36,7 @@ const Navbar = () => {
   const handleLogout = () => {
     localStorage.removeItem('auth');
     localStorage.removeItem('rememberMe');
-    navigate('/login');
+    navigate('/home');
   };
 
   const handleLogin = () => {

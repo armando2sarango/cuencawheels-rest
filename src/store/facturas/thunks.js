@@ -10,7 +10,17 @@ export const fetchfacturas = createAsyncThunk(
     return data;
   }
 );
-
+export const fetchFacturasByUsuarioThunk = createAsyncThunk(
+  'facturas/fetchByUsuario',
+  async (idUsuario, { rejectWithValue }) => {
+    try {
+      const data = await FacturaAPI.getFacturasByUsuario(idUsuario);
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Error al cargar facturas del usuario');
+    }
+  }
+);
 // Obtener vehículo por ID
 export const fetchFacturaById = createAsyncThunk(
   'facturas/fetchById',

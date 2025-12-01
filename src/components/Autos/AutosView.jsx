@@ -1,39 +1,25 @@
 // src/components/Autos/AutosView.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Card, Button, Modal, Form, Input, InputNumber, Select, Row, Col, 
-  Tag, message, Tooltip, Space, Empty, Divider,DatePicker
+  Tag, message, Tooltip, Space, Empty 
 } from 'antd';
 import { isAdmin } from '../../services/auth';
 import { 
   ExclamationCircleOutlined, EyeOutlined, EditOutlined, 
-  DeleteOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, ClearOutlined,ShoppingCartOutlined
+  DeleteOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, ClearOutlined, ShoppingCartOutlined
 } from '@ant-design/icons';
 import './Autos.css';
-const { RangePicker } = DatePicker;
+
 const { Option } = Select;
 const { TextArea } = Input;
+
 const AutosView = ({ 
-  
-  autos = [], 
-  loading, 
-  error, 
-  onEditar, 
-  onEliminar, 
-  onCrear,
-  onBuscar, 
-  onRefresh,
-  onAgregarCarrito,
-  checkAuth, 
-  navigate,
-  api
+  autos = [], loading, error, onEditar, onEliminar, onCrear, onBuscar, onRefresh, onAgregarCarrito, checkAuth
 }) => {
-   const userIsAdmin = isAdmin(); 
-  // 1. NUEVOS ESTADOS PARA EL CARRITO
-  const [modalReservaVisible, setModalReservaVisible] = useState(false);
-  const [autoAReservar, setAutoAReservar] = useState(null);
-  const [fechasReserva, setFechasReserva] = useState([]);
-  const [reservaLoading, setReservaLoading] = useState(false);
+  const userIsAdmin = isAdmin(); 
+  
+  // Estados para CRUD de Autos
   const [modalVisible, setModalVisible] = useState(false);
   const [modalEliminarVisible, setModalEliminarVisible] = useState(false);
   const [detallesVisible, setDetallesVisible] = useState(false);
@@ -47,49 +33,22 @@ const AutosView = ({
   
   const listaAutos = Array.isArray(autos) ? autos : [];
 
-  // ============= LÓGICA DE FILTRADO =============
-const abrirModalReserva = (auto) => {
-    setAutoAReservar(auto);
-    setModalReservaVisible(true);
-  };
-const handleInitialReserveClick = (auto) => {
-    // Solo ejecutamos checkAuth(). Si devuelve false, el padre muestra la alerta.
-    // Si devuelve true, procedemos a abrir el modal.
+  // ✅ NUEVA FUNCIÓN DIRECTA: Ya no abre modal, agrega directo
+  const handleAddToCart = (auto) => {
+    // 1. Verificamos si está logueado (esto abre el modal de login si no lo está)
     if (checkAuth()) {
-        abrirModalReserva(auto);
+      // 2. Agregamos directo al carrito (sin fechas)
+      onAgregarCarrito(auto.IdVehiculo);
     }
   };
-const handleConfirmarReserva = async () => {
-    if (!fechasReserva || fechasReserva.length === 0) {
-      message.error("Por favor selecciona las fechas de renta");
-      return;
-    }
 
-    setReservaLoading(true);
-    try {
-        const fechaInicio = fechasReserva[0]?.toISOString();
-        const fechaFin = fechasReserva[1]?.toISOString();
-        const fechasFormat = [fechaInicio, fechaFin];
-        const success = await onAgregarCarrito(autoAReservar.IdVehiculo, fechasFormat);
-        setReservaLoading(false);
-        if (success === true) {
-            console.log("5. Éxito. Cerrando modal.");
-            setModalReservaVisible(false);
-            setFechasReserva([]);
-            setAutoAReservar(null);
-        } else {
-            console.warn("5. Fallo. El padre devolvió false. El modal NO se cerrará.");
-        }
-    } catch (error) {
-        console.error("ERROR CRÍTICO EN LA VISTA:", error);
-        setReservaLoading(false);
-    }
-  };
-const handleFilterSearch = async (values) => {
+  // --- FILTROS Y BÚSQUEDA ---
+  const handleFilterSearch = async (values) => {
       const filtros = {};
       if (values.IdCategoria) filtros.categoria = values.IdCategoria; 
       if (values.IdTransmision) filtros.transmision = values.IdTransmision; 
       if (values.Estado) filtros.estado = values.Estado;
+      
       if (Object.keys(filtros).length > 0) {
           await onBuscar(filtros);
       } else {
@@ -101,6 +60,8 @@ const handleFilterSearch = async (values) => {
     filterForm.resetFields();
     onRefresh(); 
   };
+
+  // --- MODAL CREAR / EDITAR ---
   const abrirModal = (auto = null) => {
       setAutoActual(auto);
       if (auto) {
@@ -113,7 +74,7 @@ const handleFilterSearch = async (values) => {
           Capacidad: auto.Capacidad || 5,
           PrecioDia: parseFloat(auto.PrecioDia) || 0,
           PrecioNormal: parseFloat(auto.PrecioNormal) || 0,
-          PrecioActual: parseFloat(auto.PrecioActual) || 0,
+          PrecioActual: parseFloat(auto.PrecioActual) || parseFloat(auto.PrecioDia) || 0,
           Matricula: auto.Matricula || '',
           IdPromocion: auto.IdPromocion || null,
           PorcentajeDescuento: auto.PorcentajeDescuento || 0,
@@ -185,6 +146,8 @@ const handleFilterSearch = async (values) => {
         setSubmitLoading(false);
       }
     };
+
+    // --- MODAL ELIMINAR ---
     const abrirModalEliminar = (auto) => {
       setAutoAEliminar(auto);
       setModalEliminarVisible(true);
@@ -212,6 +175,8 @@ const handleFilterSearch = async (values) => {
       setModalEliminarVisible(false);
       setAutoAEliminar(null);
     };
+
+    // --- MODAL DETALLES ---
     const verDetalles = (auto) => {
       setAutoActual(auto);
       setDetallesVisible(true);
@@ -249,10 +214,8 @@ const handleFilterSearch = async (values) => {
             onFinish={handleFilterSearch}
             style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}
         >
-                       {/* Filtro de Categoría */}
             <Form.Item name="IdCategoria" style={{ minWidth: 150 }}>
                 <Select placeholder="Categoría" allowClear>
-                    {/* CAMBIO CLAVE: value es el TEXTO, no el ID */}
                     <Option value="Sedán">Sedán</Option>
                     <Option value="SUV">SUV</Option>
                     <Option value="Hatchback">Hatchback</Option>
@@ -261,17 +224,13 @@ const handleFilterSearch = async (values) => {
                 </Select>
             </Form.Item>
 
-            {/* Filtro de Transmisión */}
             <Form.Item name="IdTransmision" style={{ minWidth: 150 }}>
                 <Select placeholder="Transmisión" allowClear>
-                    {/* CAMBIO CLAVE: value es el TEXTO */}
                     <Option value="Automática">Automática</Option>
                     <Option value="Manual">Manual</Option>
                 </Select>
             </Form.Item>
 
-
-            {/* Filtro de Estado */}
             <Form.Item name="Estado" style={{ minWidth: 150 }}>
                 <Select placeholder="Estado" allowClear>
                     <Option value="Disponible">Disponible</Option>
@@ -280,7 +239,6 @@ const handleFilterSearch = async (values) => {
                 </Select>
             </Form.Item>
 
-            {/* Botones */}
             <Form.Item>
                 <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>
                     Buscar
@@ -293,6 +251,7 @@ const handleFilterSearch = async (values) => {
             </Form.Item>
         </Form>
       </Card>
+
       <div className="autos-header" style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
@@ -319,6 +278,7 @@ const handleFilterSearch = async (values) => {
            )}
         </Space>
       </div>
+
       {listaAutos.length === 0 ? (
           <Empty 
             description="No hay vehículos disponibles"
@@ -378,15 +338,14 @@ const handleFilterSearch = async (values) => {
                     </div>
                   }
                   actions={[
-                    <Tooltip title="Añadir al Carrito">
+                    <Tooltip title="Añadir a lista de deseos">
                       <Button 
                         type="text"
                         icon={<ShoppingCartOutlined style={{ fontSize: '18px', color: '#1890ff' }} />}
-                        onClick={() => handleInitialReserveClick(auto)}
-                        
+                        // ✅ CAMBIO: LLamada directa a la nueva función handleAddToCart
+                        onClick={() => handleAddToCart(auto)}
                         disabled={auto.Estado !== 'Disponible'} 
-                      >
-                        Reservar
+                      >        
                       </Button>
                     </Tooltip>,
                   userIsAdmin && (
@@ -440,6 +399,8 @@ const handleFilterSearch = async (values) => {
             ))}
           </Row>
         )}
+
+      {/* MODAL CREAR/EDITAR */}
       <Modal
         title={autoActual ? `Editar ${autoActual.Marca} ${autoActual.Modelo}` : 'Crear Nuevo Vehículo'}
         open={modalVisible}
@@ -450,50 +411,28 @@ const handleFilterSearch = async (values) => {
         width={800}
         confirmLoading={submitLoading}
       >
-        
         <Form form={form} layout="vertical">
           <Row gutter={16}>
             <Col span={8}>
-              <Form.Item 
-                name="Marca" 
-                label="Marca" 
-                rules={[{ required: true, message: 'Ingresa la marca' }]}
-              >
+              <Form.Item name="Marca" label="Marca" rules={[{ required: true }]}>
                 <Input placeholder="Ej: Toyota" />
               </Form.Item>
             </Col>
             <Col span={8}>
-              <Form.Item 
-                name="Modelo" 
-                label="Modelo" 
-                rules={[{ required: true, message: 'Ingresa el modelo' }]}
-              >
+              <Form.Item name="Modelo" label="Modelo" rules={[{ required: true }]}>
                 <Input placeholder="Ej: Corolla" />
               </Form.Item>
             </Col>
             <Col span={8}>
-              <Form.Item 
-                name="Anio" 
-                label="Año" 
-                rules={[{ required: true, message: 'Ingresa el año' }]}
-              >
-                <InputNumber 
-                  placeholder="2024" 
-                  min={1900} 
-                  max={2030} 
-                  style={{ width: '100%' }} 
-                />
+              <Form.Item name="Anio" label="Año" rules={[{ required: true }]}>
+                <InputNumber placeholder="2024" min={1900} max={2030} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
           </Row>
 
           <Row gutter={16}>
             <Col span={8}>
-              <Form.Item 
-                name="IdCategoria" 
-                label="Categoría" 
-                rules={[{ required: true }]}
-              >
+              <Form.Item name="IdCategoria" label="Categoría" rules={[{ required: true }]}>
                 <Select placeholder="Selecciona categoría">
                   <Option value={1}>Sedán</Option>
                   <Option value={2}>SUV</Option>
@@ -504,11 +443,7 @@ const handleFilterSearch = async (values) => {
               </Form.Item>
             </Col>
             <Col span={8}>
-              <Form.Item 
-                name="IdTransmision" 
-                label="Transmisión" 
-                rules={[{ required: true }]}
-              >
+              <Form.Item name="IdTransmision" label="Transmisión" rules={[{ required: true }]}>
                 <Select placeholder="Tipo de transmisión">
                   <Option value={1}>Automática</Option>
                   <Option value={2}>Manual</Option>
@@ -516,86 +451,38 @@ const handleFilterSearch = async (values) => {
               </Form.Item>
             </Col>
             <Col span={8}>
-              <Form.Item 
-                name="Capacidad" 
-                label="Capacidad" 
-                rules={[{ required: true }]}
-              >
-                <InputNumber 
-                  placeholder="5" 
-                  min={2} 
-                  max={15} 
-                  style={{ width: '100%' }} 
-                  addonAfter="pasajeros"
-                />
+              <Form.Item name="Capacidad" label="Capacidad" rules={[{ required: true }]}>
+                <InputNumber placeholder="5" min={2} max={15} style={{ width: '100%' }} addonAfter="pasajeros"/>
               </Form.Item>
             </Col>
           </Row>
 
           <Row gutter={16}>
             <Col span={8}>
-              <Form.Item 
-                name="PrecioDia" 
-                label="Precio por día" 
-                rules={[{ required: true }]}
-              >
-                <InputNumber 
-                  placeholder="50.00" 
-                  min={0} 
-                  step={0.01} 
-                  precision={2} 
-                  style={{ width: '100%' }} 
-                  prefix="$" 
-                />
+              <Form.Item name="PrecioDia" label="Precio por día" rules={[{ required: true }]}>
+                <InputNumber placeholder="50.00" min={0} step={0.01} precision={2} style={{ width: '100%' }} prefix="$" />
               </Form.Item>
             </Col>
             <Col span={8}>
-              <Form.Item 
-                name="PrecioNormal" 
-                label="Precio Normal"
-              >
-                <InputNumber 
-                  placeholder="60.00" 
-                  min={0} 
-                  step={0.01} 
-                  precision={2} 
-                  style={{ width: '100%' }} 
-                  prefix="$" 
-                />
+              <Form.Item name="PrecioNormal" label="Precio Normal">
+                <InputNumber placeholder="60.00" min={0} step={0.01} precision={2} style={{ width: '100%' }} prefix="$" />
               </Form.Item>
             </Col>
             <Col span={8}>
-              <Form.Item 
-                name="PrecioActual" 
-                label="Precio Actual"
-              >
-                <InputNumber 
-                  placeholder="50.00" 
-                  min={0} 
-                  step={0.01} 
-                  precision={2} 
-                  style={{ width: '100%' }} 
-                  prefix="$" 
-                />
+              <Form.Item name="PrecioActual" label="Precio Actual">
+                <InputNumber placeholder="50.00" min={0} step={0.01} precision={2} style={{ width: '100%' }} prefix="$" />
               </Form.Item>
             </Col>
           </Row>
 
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item 
-                name="Matricula" 
-                label="Matrícula"
-              >
+              <Form.Item name="Matricula" label="Matrícula">
                 <Input placeholder="ABC-1234" />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item 
-                name="Estado" 
-                label="Estado" 
-                rules={[{ required: true }]}
-              >
+              <Form.Item name="Estado" label="Estado" rules={[{ required: true }]}>
                 <Select placeholder="Estado del vehículo">
                   <Option value="Disponible">Disponible</Option>
                   <Option value="No Disponible">No Disponible</Option>
@@ -608,55 +495,28 @@ const handleFilterSearch = async (values) => {
 
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item 
-                name="IdSucursal" 
-                label="Sucursal" 
-                rules={[{ required: true }]}
-              >
-                <InputNumber 
-                  placeholder="1" 
-                  min={1} 
-                  style={{ width: '100%' }} 
-                />
+              <Form.Item name="IdSucursal" label="Sucursal" rules={[{ required: true }]}>
+                <InputNumber placeholder="1" min={1} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item 
-                name="PorcentajeDescuento" 
-                label="% Descuento"
-              >
-                <InputNumber 
-                  placeholder="0" 
-                  min={0} 
-                  max={100} 
-                  style={{ width: '100%' }} 
-                  addonAfter="%"
-                />
+              <Form.Item name="PorcentajeDescuento" label="% Descuento">
+                <InputNumber placeholder="0" min={0} max={100} style={{ width: '100%' }} addonAfter="%" />
               </Form.Item>
             </Col>
           </Row>
 
-          <Form.Item 
-            name="UrlImagen" 
-            label="URL de Imagen"
-          >
+          <Form.Item name="UrlImagen" label="URL de Imagen">
             <Input placeholder="https://ejemplo.com/imagen.jpg" />
           </Form.Item>
 
-          <Form.Item 
-            name="Descripcion" 
-            label="Descripción"
-          >
-            <TextArea 
-              rows={3} 
-              placeholder="Descripción del vehículo..."
-            />
+          <Form.Item name="Descripcion" label="Descripción">
+            <TextArea rows={3} placeholder="Descripción del vehículo..." />
           </Form.Item>
         </Form>
       </Modal>
 
       {/* MODAL ELIMINAR */}
-      {/* ... (el código del Modal Eliminar sigue igual) ... */}
       <Modal
         title="Confirmar Eliminación"
         open={modalEliminarVisible}
@@ -688,7 +548,6 @@ const handleFilterSearch = async (values) => {
       </Modal>
 
       {/* MODAL DETALLES */}
-      {/* ... (el código del Modal Detalles sigue igual) ... */}
       <Modal
         title={`Detalles - ${autoActual?.Marca || ''} ${autoActual?.Modelo || ''}`}
         open={detallesVisible}
@@ -713,14 +572,8 @@ const handleFilterSearch = async (values) => {
                 <img
                   src={autoActual.UrlImagen}
                   alt={`${autoActual.Marca} ${autoActual.Modelo}`}
-                  style={{ 
-                    maxWidth: '100%', 
-                    maxHeight: '300px', 
-                    borderRadius: '8px' 
-                  }}
-                  onError={(e) => { 
-                    e.target.src = 'https://via.placeholder.com/300x200?text=Sin+Imagen'; 
-                  }}
+                  style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px' }}
+                  onError={(e) => { e.target.src = 'https://via.placeholder.com/300x200?text=Sin+Imagen'; }}
                 />
               </div>
             )}
@@ -742,10 +595,7 @@ const handleFilterSearch = async (values) => {
                 <p><strong>Capacidad:</strong> {autoActual.Capacidad ? `${autoActual.Capacidad} pasajeros` : 'N/A'}</p>
                 <p>
                   <strong>Estado:</strong> 
-                  <Tag 
-                    color={autoActual.Estado === "Disponible" ? "green" : "red"} 
-                    style={{ marginLeft: 8 }}
-                  >
+                  <Tag color={autoActual.Estado === "Disponible" ? "green" : "red"} style={{ marginLeft: 8 }}>
                     {autoActual.Estado || 'N/A'}
                   </Tag>
                 </p>
@@ -764,9 +614,6 @@ const handleFilterSearch = async (values) => {
               <Col span={12}>
                 <h4>Ubicación</h4>
                 <p><strong>Sucursal:</strong> {autoActual.SucursalNombre || (autoActual.IdSucursal ? `ID: ${autoActual.IdSucursal}` : 'N/A')}</p>
-                {autoActual.PromocionNombre && (
-                  <p><strong>Promoción:</strong> {autoActual.PromocionNombre}</p>
-                )}
               </Col>
             </Row>
 
@@ -778,38 +625,6 @@ const handleFilterSearch = async (values) => {
             )}
           </div>
         )}
-      </Modal>
-      {/* MODAL DE RESERVA (FECHAS) */}
-      <Modal
-        title={`Reservar ${autoAReservar?.Marca} ${autoAReservar?.Modelo}`}
-        open={modalReservaVisible}
-        onOk={handleConfirmarReserva}
-        onCancel={() => setModalReservaVisible(false)}
-        okText="Añadir al Carrito"
-        cancelText="Cancelar"
-        confirmLoading={reservaLoading}
-      >
-        <div style={{ padding: '20px 0' }}>
-          <p>Selecciona las fechas para tu renta:</p>
-          <RangePicker 
-            style={{ width: '100%' }}
-            onChange={(dates) => setFechasReserva(dates)}
-            // Deshabilitar fechas pasadas (opcional)
-            // disabledDate={(current) => current && current < new Date().setHours(0,0,0,0)} 
-          />
-          
-          {autoAReservar && (
-            <div style={{ marginTop: 20, background: '#f5f5f5', padding: 10, borderRadius: 4 }}>
-              <p style={{ margin: 0 }}><strong>Precio por día:</strong> ${autoAReservar.PrecioDia}</p>
-              {fechasReserva && fechasReserva[1] && (
-                <p style={{ margin: '5px 0 0 0', color: '#1890ff', fontWeight: 'bold' }}>
-                  Total estimado: $
-                  {(autoAReservar.PrecioDia * (fechasReserva[1].diff(fechasReserva[0], 'days') + 1)).toFixed(2)}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
       </Modal>
     </div>
   );
