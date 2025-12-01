@@ -1,8 +1,8 @@
 import React from 'react';
 import { 
-  Table, Card, Button, Typography, Space, Image, Empty, Row, Col, Tag,Tooltip
+  Table, Card, Button, Typography, Space, Image, Empty, Row, Col, Tag, Tooltip, Checkbox, Alert
 } from 'antd';
-import { DeleteOutlined, ShoppingCartOutlined, CreditCardOutlined,EyeOutlined } from '@ant-design/icons';
+import { DeleteOutlined, ShoppingCartOutlined, CreditCardOutlined, EyeOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 
@@ -11,10 +11,24 @@ const CarritoView = ({
   loading, 
   onEliminar, 
   onReservar,
-  onVerDetalles
+  onVerDetalles,
+  vehiculoSeleccionado,
+  onSeleccionarVehiculo
 }) => {
   
   const columns = [
+    {
+      title: 'Seleccionar',
+      key: 'seleccionar',
+      width: 80,
+      align: 'center',
+      render: (_, record) => (
+        <Checkbox 
+          checked={vehiculoSeleccionado?.IdItem === record.IdItem}
+          onChange={() => onSeleccionarVehiculo(record)}
+        />
+      ),
+    },
     {
       title: 'Vehículo',
       dataIndex: 'UrlImagen', 
@@ -67,27 +81,27 @@ const CarritoView = ({
       },
     },
     {
-  title: '',
-  key: 'acciones',
-  width: 120,
-  render: (_, record) => (
-    <Space>
-      <Tooltip title="Ver detalles">
-        <Button 
-          icon={<EyeOutlined />} 
-          onClick={() => onVerDetalles && onVerDetalles(record.IdVehiculo)} 
-        />
-      </Tooltip>
-      <Tooltip title="Eliminar">
-        <Button 
-          danger 
-          icon={<DeleteOutlined />} 
-          onClick={() => onEliminar(record.IdItem)} 
-        />
-      </Tooltip>
-    </Space>
-  ),
-}
+      title: '',
+      key: 'acciones',
+      width: 120,
+      render: (_, record) => (
+        <Space>
+          <Tooltip title="Ver detalles">
+            <Button 
+              icon={<EyeOutlined />} 
+              onClick={() => onVerDetalles && onVerDetalles(record.IdVehiculo)} 
+            />
+          </Tooltip>
+          <Tooltip title="Quitar del carrito">
+            <Button 
+              danger 
+              icon={<DeleteOutlined />} 
+              onClick={() => onEliminar(record.IdItem)} 
+            />
+          </Tooltip>
+        </Space>
+      ),
+    }
   ];
 
   if (loading && items.length === 0) {
@@ -154,18 +168,45 @@ const CarritoView = ({
                 </Button>
             </Empty>
           ) : (
-            <Table 
-              dataSource={items} 
-              columns={columns} 
-              rowKey={(record) => record.IdItem || record.IdVehiculo || Math.random()} 
-              pagination={false}
-              style={{ 
-                background: '#fff', 
-                borderRadius: '12px', 
-                overflow: 'hidden', 
-                boxShadow: '0 2px 8px rgba(0,0,0,0.06)' 
-              }}
-            />
+            <>
+              {/* ALERTA: Selecciona un vehículo */}
+              {items.length > 1 && !vehiculoSeleccionado && (
+                <Alert
+                  message="⚠️ Importante"
+                  description="Por política de la empresa, solo puedes reservar UN vehículo a la vez. Por favor selecciona el vehículo que deseas reservar marcando el checkbox."
+                  type="warning"
+                  showIcon
+                  style={{ marginBottom: '16px' }}
+                />
+              )}
+              
+              {/* ALERTA: Vehículo seleccionado */}
+              {vehiculoSeleccionado && (
+                <Alert
+                  message="✓ Vehículo Seleccionado"
+                  description={`Has seleccionado: ${vehiculoSeleccionado.VehiculoNombre || vehiculoSeleccionado.Nombre}. Puedes proceder al pago.`}
+                  type="success"
+                  showIcon
+                  style={{ marginBottom: '16px' }}
+                />
+              )}
+
+              <Table 
+                dataSource={items} 
+                columns={columns} 
+                rowKey={(record) => record.IdItem || record.IdVehiculo || Math.random()} 
+                pagination={false}
+                style={{ 
+                  background: '#fff', 
+                  borderRadius: '12px', 
+                  overflow: 'hidden', 
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)' 
+                }}
+                rowClassName={(record) => 
+                  vehiculoSeleccionado?.IdItem === record.IdItem ? 'row-selected' : ''
+                }
+              />
+            </>
           )}
         </Col>
 
@@ -193,11 +234,41 @@ const CarritoView = ({
                 background: '#f0f5ff',
                 borderRadius: '8px'
               }}>
-                <Text style={{ fontSize: '15px' }}>Vehículos seleccionados:</Text>
+                <Text style={{ fontSize: '15px' }}>Vehículos en carrito:</Text>
                 <Text strong style={{ fontSize: '18px', color: '#1890ff' }}>
                   {items.length}
                 </Text>
               </div>
+
+              {/* Mostrar vehículo seleccionado */}
+              {vehiculoSeleccionado ? (
+                <div style={{ 
+                  background: '#f6ffed', 
+                  padding: '12px', 
+                  borderRadius: '8px',
+                  border: '2px solid #b7eb8f',
+                  marginBottom: '16px'
+                }}>
+                  <Text strong style={{ color: '#52c41a', display: 'block', marginBottom: '8px' }}>
+                    ✓ Seleccionado para pago:
+                  </Text>
+                  <Text style={{ fontSize: '14px' }}>
+                    {vehiculoSeleccionado.VehiculoNombre || vehiculoSeleccionado.Nombre}
+                  </Text>
+                </div>
+              ) : (
+                <div style={{ 
+                  background: '#fff7e6', 
+                  padding: '12px', 
+                  borderRadius: '8px',
+                  border: '1px solid #ffd591',
+                  marginBottom: '16px'
+                }}>
+                  <Text type="secondary" style={{ fontSize: '13px' }}>
+                    💡 <strong>Nota:</strong> Selecciona un vehículo marcando el checkbox para continuar.
+                  </Text>
+                </div>
+              )}
             </div>
             
             <Button 
@@ -205,18 +276,18 @@ const CarritoView = ({
               size="large" 
               block 
               icon={<CreditCardOutlined />} 
-              disabled={items.length === 0}
+              disabled={items.length === 0 || !vehiculoSeleccionado}
               onClick={onReservar} 
               style={{ 
                 height: '50px', 
                 fontSize: '16px', 
                 fontWeight: 'bold',
-                background: items.length === 0 ? undefined : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                borderColor: items.length === 0 ? undefined : 'transparent',
-                boxShadow: items.length === 0 ? undefined : '0 4px 15px rgba(102, 126, 234, 0.4)'
+                background: (items.length === 0 || !vehiculoSeleccionado) ? undefined : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                borderColor: (items.length === 0 || !vehiculoSeleccionado) ? undefined : 'transparent',
+                boxShadow: (items.length === 0 || !vehiculoSeleccionado) ? undefined : '0 4px 15px rgba(102, 126, 234, 0.4)'
               }}
             >
-              {items.length === 0 ? 'Carrito Vacío' : 'Proceder al Pago'}
+              {items.length === 0 ? 'Carrito Vacío' : !vehiculoSeleccionado ? 'Selecciona un vehículo' : 'Proceder al Pago'}
             </Button>
             
             <Button 
@@ -239,6 +310,14 @@ const CarritoView = ({
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
+        }
+        
+        .row-selected {
+          background-color: #e6f7ff !important;
+        }
+        
+        .row-selected:hover {
+          background-color: #bae7ff !important;
         }
       `}</style>
     </div>
