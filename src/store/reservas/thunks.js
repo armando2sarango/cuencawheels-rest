@@ -1,9 +1,5 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import * as reservaAPI from './restCalls';
-
-// ============================================================
-// 🔵 Traer todas las reservas (Admin)
-// ============================================================
 export const fetchReservas = createAsyncThunk(
   'reserva/fetchAll',
   async (_, { rejectWithValue }) => {
@@ -15,10 +11,6 @@ export const fetchReservas = createAsyncThunk(
     }
   }
 );
-
-// ============================================================
-// 🔍 Traer una reserva por ID
-// ============================================================
 export const fetchReservaById = createAsyncThunk(
   'reserva/fetchById',
   async (id, { rejectWithValue }) => {
@@ -30,10 +22,6 @@ export const fetchReservaById = createAsyncThunk(
     }
   }
 );
-
-// ============================================================
-// 🔵 Traer reservas de un usuario específico
-// ============================================================
 export const fetchReservasIdUsuario = createAsyncThunk(
   'reserva/fetchByUsuario',
   async (idUsuario, { rejectWithValue }) => {
@@ -45,10 +33,6 @@ export const fetchReservasIdUsuario = createAsyncThunk(
     }
   }
 );
-
-// ============================================================
-// 🟢 CREAR RESERVA (CRÍTICO - Con manejo de errores del banco)
-// ============================================================
 export const createReservaThunk = createAsyncThunk(
   'reserva/create',
   async (body, { rejectWithValue }) => {
@@ -58,21 +42,13 @@ export const createReservaThunk = createAsyncThunk(
       console.log('✅ Thunk recibió respuesta exitosa:', data);
       return data;
     } catch (error) {
-      console.error('❌ Thunk capturó error:', error);
-      console.error('❌ Mensaje del error:', error.message);
-      
-      // El error ya viene con el mensaje correcto desde createReserva
       const mensajeError = error.message || 'Error desconocido al crear la reserva';
-      console.error('🔴 Mensaje propagado al componente:', mensajeError);
       
       return rejectWithValue(mensajeError);
     }
   }
 );
 
-// ============================================================
-// 🟠 ACTUALIZAR RESERVA
-// ============================================================
 export const updateReservaThunk = createAsyncThunk(
   'reserva/update',
   async ({ id, body }, { rejectWithValue }) => {
@@ -84,10 +60,6 @@ export const updateReservaThunk = createAsyncThunk(
     }
   }
 );
-
-// ============================================================
-// 🔧 ACTUALIZAR ESTADO DE RESERVA
-// ============================================================
 export const updateEstadoReservaThunk = createAsyncThunk(
   'reserva/updateEstado',
   async ({ id, estado }, { rejectWithValue }) => {
@@ -99,10 +71,6 @@ export const updateEstadoReservaThunk = createAsyncThunk(
     }
   }
 );
-
-// ============================================================
-// 🔴 ELIMINAR RESERVA
-// ============================================================
 export const deleteReservaThunk = createAsyncThunk(
   'reserva/delete',
   async (id, { rejectWithValue }) => {

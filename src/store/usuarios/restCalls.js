@@ -1,6 +1,4 @@
 import { makeRequest, HttpMethod } from '../../services/restCall';
-// store/usuarios/restCalls.js
-
 export async function getUsuarios() {
   try {
     const response = await makeRequest(HttpMethod.GET, '/usuarios');
@@ -12,8 +10,6 @@ export async function getUsuarios() {
     return [];
   }
 }
-
-
 export async function getUsuarioById(id) {
   try {
     const response = await makeRequest(HttpMethod.GET, `/usuarios/${id}`);
@@ -43,7 +39,6 @@ export async function login(body) {
     throw error;
   }
 }
-
 export async function updateUsuario(id, body) {
   try {
     const response = await makeRequest(HttpMethod.PUT, `/usuarios/${id}`, body);
@@ -53,7 +48,6 @@ export async function updateUsuario(id, body) {
     throw error;
   }
 }
-
 export async function deleteUsuario(id) {
   try {
     const response = await makeRequest(HttpMethod.DELETE, `/usuarios/${id}`);

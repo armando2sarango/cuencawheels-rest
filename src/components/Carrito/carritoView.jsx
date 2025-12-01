@@ -53,7 +53,6 @@ const CarritoView = ({
       key: 'precio',
       align: 'right',
       render: (_, record) => {
-        // Obtenemos el precio unitario de diferentes posibles campos
         const precio = record.PrecioPorDia || record.PrecioDia || 0;
         return (
             <div style={{ textAlign: 'right' }}>
@@ -197,18 +196,6 @@ const CarritoView = ({
                 <Text style={{ fontSize: '15px' }}>Vehículos seleccionados:</Text>
                 <Text strong style={{ fontSize: '18px', color: '#1890ff' }}>
                   {items.length}
-                </Text>
-              </div>
-              
-              <div style={{ 
-                background: '#fffbe6', 
-                padding: '12px', 
-                borderRadius: '8px',
-                border: '1px solid #ffe58f',
-                marginBottom: '16px'
-              }}>
-                <Text type="secondary" style={{ fontSize: '13px' }}>
-                  💡 <strong>Nota:</strong> El monto total se calculará al seleccionar las fechas de renta en el siguiente paso.
                 </Text>
               </div>
             </div>
