@@ -61,6 +61,11 @@ const Navbar = () => {
             <Menu.Item key="Home" icon={<HomeOutlined />}>
               <Link to="/home">Inicio</Link>
             </Menu.Item>
+             {userIsAdmin && (
+              <Menu.Item key="usuarios" icon={<UserOutlined />}>
+                <Link to="/usuarios">Usuarios</Link>
+              </Menu.Item>
+            )}
 
             <Menu.Item key="autos" icon={<CarOutlined />}>
               <Link to="/autos">Autos</Link>
@@ -84,11 +89,7 @@ const Navbar = () => {
               </Menu.Item>
             )}
 
-            {userIsAdmin && (
-              <Menu.Item key="usuarios" icon={<UserOutlined />}>
-                <Link to="/usuarios">Usuarios</Link>
-              </Menu.Item>
-            )}
+
 
           </Menu>
         </div>

@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { notification, Modal } from 'antd'; // Importamos Modal
+import { notification, Modal } from 'antd'; 
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 import AutosView from './AutosView';
 import { createCarritoThunk } from '../../store/carrito/thunks';

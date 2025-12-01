@@ -2,9 +2,11 @@ import React, { useState,useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, Select, message, InputNumber, Row, Col, Tag } from 'antd';
 import { UserOutlined,MailOutlined,PhoneOutlined,HomeOutlined,IdcardOutlined,LockOutlined,GlobalOutlined} from '@ant-design/icons';
 import { validateName, validatePassword, validateAge, validateEmail, validateDocument } from '../../utils/validations';
+import { isAdmin } from '../../services/auth';
 const { Option } = Select;
 
 const UsuariosView = ({ usuarios, loading, error, onCrear, onEditar, onEliminar }) => {
+  const userIsAdmin = isAdmin();
   const [modalVisible, setModalVisible] = useState(false);
   const [modalEliminarVisible, setModalEliminarVisible] = useState(false);
   const [usuarioAEliminar, setUsuarioAEliminar] = useState(null);
@@ -113,7 +115,7 @@ const UsuariosView = ({ usuarios, loading, error, onCrear, onEditar, onEliminar 
     { title: "Nombre", dataIndex: "Nombre", ellipsis: true },
     { title: "Apellido", dataIndex: "Apellido", ellipsis: true },
     { title: "Email", dataIndex: "Email", ellipsis: true },
-    { title: "ID", dataIndex: "Identificacion" },
+    { title: "Cedula", dataIndex: "Identificacion" },
     { title: "Rol", dataIndex: "Rol", render: (rol) => <Tag color={rol === 'Administrador' ? 'blue' : 'green'}>{rol}</Tag> },
     {
       title: "Acciones",
@@ -213,33 +215,33 @@ const UsuariosView = ({ usuarios, loading, error, onCrear, onEditar, onEliminar 
                 <Input prefix={<MailOutlined />} />
               </Form.Item>
             </Col>
-            <Col span={12}>
-              <Form.Item 
-                name="Contrasena" 
-                label="Contraseña" 
-                rules={[
-                  { required: !usuarioActual, message: 'Contraseña requerida para crear' },
-                  { 
-                    validator: async (_, value) => {
-                        if (!value) return Promise.resolve(); 
+{!userIsAdmin && (
+  <Col span={12}>
+    <Form.Item 
+      name="Contrasena" 
+      label="Contraseña" 
+      rules={[
+        { required: !usuarioActual, message: 'Contraseña requerida para crear' },
+        { 
+          validator: async (_, value) => {
+              if (!value) return Promise.resolve();
+              const error = validatePassword(value);
+              if (error) return Promise.reject(new Error(error));
+              return Promise.resolve();
+          }
+        },
+      ]}
+      help={usuarioActual ? "Dejar vacío para mantener la actual" : "Min. 8 chars, Mayús, Minús, Número y Símbolo"}
+      hasFeedback={!!form.getFieldValue('Contrasena')}
+    >
+      <Input.Password 
+        prefix={<LockOutlined />} 
+        placeholder={usuarioActual ? "********" : "Nueva contraseña"}
+      />
+    </Form.Item>
+  </Col>
+)}
 
-                        const error = validatePassword(value);
-                        if (error) {
-                          return Promise.reject(new Error(error));
-                        }
-                        return Promise.resolve();
-                    }
-                  },
-                ]}
-                help={usuarioActual ? "Dejar vacío para mantener la actual" : "Min. 8 chars, Mayús, Minús, Número y Símbolo"}
-                hasFeedback={!!form.getFieldValue('Contrasena')} 
-              >
-                <Input.Password 
-                  prefix={<LockOutlined />} 
-                  placeholder={usuarioActual ? "********" : "Nueva contraseña"} 
-                />
-              </Form.Item>
-            </Col>
           </Row>
 
           <Row gutter={16}>
