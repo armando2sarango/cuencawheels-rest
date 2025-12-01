@@ -1,43 +1,128 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
-  Table, Card, Tag, Button, Space, Popconfirm, Tooltip, Typography, Empty 
+  Table, Card, Tag, Button, Space, Popconfirm, Tooltip, Typography, Empty, Modal, Form, Select, DatePicker, Input, Row, Col, Divider 
 } from 'antd';
-import { 
-  CloseCircleOutlined, 
-  DeleteOutlined, 
-  SyncOutlined, 
-  CarOutlined,
-  CheckOutlined,
-  FlagOutlined,
-  DollarOutlined
-} from '@ant-design/icons';
+import {SyncOutlined,CarOutlined,FlagOutlined,DollarOutlined, PlusOutlined} from '@ant-design/icons';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
+const { RangePicker } = DatePicker;
+const { Option } = Select;
 
 const ReservasView = ({ 
   reservas = [], 
   loading, 
   esAdmin, 
-  onEliminar, 
   onCambiarEstado, 
   onRefresh,
-  onVerPagos
+  onVerPagos,
+  onCrearReserva,
+  usuarios = [],
+  vehiculos = []
 }) => {
+  const [modalReservaVisible, setModalReservaVisible] = useState(false);
+  const [modalPagoVisible, setModalPagoVisible] = useState(false);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [datosReserva, setDatosReserva] = useState(null);
+  const [totalCalculado, setTotalCalculado] = useState(0);
+  const [diasRenta, setDiasRenta] = useState(0);
+  
+  const [formReserva] = Form.useForm();
+  const [formPago] = Form.useForm();
+
+  const CUENTA_EMPRESA = "1756177158";
 
   const getColorEstado = (estado) => {
     switch (estado?.toLowerCase()) {
       case 'confirmada': return 'green';
       case 'aprobada': return 'green'; 
-      case 'pendiente': return 'orange';
-      case 'rechazada': return 'red';
       case 'finalizada': return 'blue';
-      case 'cancelada': return 'default';
       default: return 'default';
     }
   };
 
-  // --- COLUMNAS BASE ---
+  const abrirModalReserva = () => {
+    formReserva.resetFields();
+    setModalReservaVisible(true);
+  };
+
+  const cerrarModalReserva = () => {
+    formReserva.resetFields();
+    setModalReservaVisible(false);
+  };
+
+const volverAModalReserva = () => {
+    setModalPagoVisible(false);
+    setModalReservaVisible(true);
+  };
+
+  const cerrarModalPago = () => {
+    formPago.resetFields();
+    setModalPagoVisible(false);
+    setDatosReserva(null);
+    setTotalCalculado(0);
+    setDiasRenta(0);
+  };
+  const handleContinuarAPago = async () => {
+    try {
+      const values = await formReserva.validateFields();
+      const [fechaInicio, fechaFin] = values.fechas;
+      const dias = fechaFin.diff(fechaInicio, 'day');
+      const diasReales = dias > 0 ? dias : 1;
+      
+      const vehiculoSeleccionado = vehiculos.find(v => v.IdVehiculo === values.IdVehiculo);
+      const precioDia = vehiculoSeleccionado?.PrecioDia || 0;
+      const subtotal = precioDia * diasReales;
+      
+      setDiasRenta(diasReales);
+      setTotalCalculado(subtotal);
+      setDatosReserva({
+        IdUsuario: values.IdUsuario,
+        IdVehiculo: values.IdVehiculo,
+        FechaInicio: fechaInicio.format('YYYY-MM-DD'),
+        FechaFin: fechaFin.format('YYYY-MM-DD'),
+        vehiculoNombre: `${vehiculoSeleccionado.Marca} ${vehiculoSeleccionado.Modelo}`,
+        precioDia: precioDia
+      });
+      setModalReservaVisible(false);
+      formPago.resetFields();
+      formPago.setFieldsValue({
+        cuentaEmpresa: CUENTA_EMPRESA,
+        cuentaUsuario: ''
+      });
+      setModalPagoVisible(true);
+      
+    } catch (err) {
+      console.error('Error en formulario de reserva:', err);
+    }
+  };
+  const handleProcesarPago = async () => {
+    try {
+      await formPago.validateFields();
+      setSubmitLoading(true);
+
+      const reservaDto = {
+        IdUsuario: datosReserva.IdUsuario,
+        IdVehiculo: datosReserva.IdVehiculo,
+        FechaInicio: datosReserva.FechaInicio,
+        FechaFin: datosReserva.FechaFin,
+        Estado: 'Confirmada',
+        Total: totalCalculado * 1.15 
+      };
+
+      const resultado = await onCrearReserva(reservaDto);
+      
+      if (resultado) {
+        cerrarModalPago();
+        cerrarModalReserva();
+      }
+    } catch (err) {
+      console.error('Error en formulario de pago:', err);
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
+
   const baseColumns = [
     { 
       title: 'ID', 
@@ -111,8 +196,6 @@ const ReservasView = ({
 
         return (
           <Space size="small">
-            
-            {/* 👁️ Ver Pagos - Cliente (solo si está confirmada o finalizada) */}
             {!esAdmin && (estado === 'confirmada' || estado === 'finalizada' || estado === 'aprobada') && (
               <Tooltip title="Ver Facturas">
                 <Button 
@@ -125,46 +208,6 @@ const ReservasView = ({
                 </Button>
               </Tooltip>
             )}
-
-            {/* ❌ Cancelar - Cliente (solo si está pendiente) */}
-            {!esAdmin && estado === 'pendiente' && (
-              <Popconfirm 
-                title="¿Cancelar reserva?" 
-                onConfirm={() => onEliminar(record.IdReserva)}
-              >
-                <Button danger size="small" icon={<DeleteOutlined />}>
-                  Cancelar
-                </Button>
-              </Popconfirm>
-            )}
-
-            {/* ✅ Confirmar / ❌ Rechazar - Admin (solo si está pendiente) */}
-            {esAdmin && estado === 'pendiente' && (
-              <>
-                <Tooltip title="Confirmar Reserva">
-                  <Button 
-                    type="primary" 
-                    shape="circle" 
-                    size="small" 
-                    icon={<CheckOutlined />} 
-                    style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }} 
-                    onClick={() => onCambiarEstado(record.IdReserva, 'Confirmada', record)} 
-                  />
-                </Tooltip>
-                <Tooltip title="Rechazar Reserva">
-                  <Button 
-                    type="primary" 
-                    danger 
-                    shape="circle" 
-                    size="small" 
-                    icon={<CloseCircleOutlined />} 
-                    onClick={() => onCambiarEstado(record.IdReserva, 'Rechazada', record)} 
-                  />
-                </Tooltip>
-              </>
-            )}
-
-            {/* 🏁 Finalizar - Admin (solo si está confirmada o aprobada) */}
             {esAdmin && (estado === 'confirmada' || estado === 'aprobada') && (
               <Popconfirm
                 title="¿Finalizar esta renta?"
@@ -183,32 +226,14 @@ const ReservasView = ({
                   </Button>
                 </Tooltip>
               </Popconfirm>
-            )}
-
-            {/* 🗑️ Eliminar del Historial - Admin (solo si ya está finalizada, rechazada o cancelada) */}
-            {esAdmin && (estado === 'rechazada' || estado === 'cancelada' || estado === 'finalizada') && (
-              <Popconfirm 
-                title="¿Eliminar del historial?" 
-                onConfirm={() => onEliminar(record.IdReserva)}
-              >
-                <Button 
-                  type="text" 
-                  danger 
-                  size="small" 
-                  icon={<DeleteOutlined />} 
-                />
-              </Popconfirm>
-            )}
-            
+            )}  
           </Space>
         );
       }
     }
   ];
 
-  // Filtramos columnas según el rol
   const finalColumns = baseColumns.filter(col => {
-    // Ocultamos columna 'Cliente' si NO es admin
     if (col.key === 'cliente' && !esAdmin) return false;
     return true;
   });
@@ -219,9 +244,20 @@ const ReservasView = ({
         <Title level={2}>
           {esAdmin ? "Gestión de Reservas (Admin)" : "Mis Reservas"}
         </Title>
-        <Button icon={<SyncOutlined />} onClick={onRefresh}>
-          Actualizar
-        </Button>
+        <Space>
+          {esAdmin && (
+            <Button 
+              type="primary" 
+              icon={<PlusOutlined />} 
+              onClick={abrirModalReserva}
+            >
+              Nueva Reserva
+            </Button>
+          )}
+          <Button icon={<SyncOutlined />} onClick={onRefresh}>
+            Actualizar
+          </Button>
+        </Space>
       </div>
 
       <Card>
@@ -235,6 +271,223 @@ const ReservasView = ({
           scroll={{ x: 800 }}
         />
       </Card>
+
+      {/* PASO 1: MODAL DATOS DE RESERVA */}
+      <Modal
+        title={
+          <span style={{ fontSize: '18px', fontWeight: 'bold' }}>
+            🚗 Paso 1: Datos de Reserva
+          </span>
+        }
+        open={modalReservaVisible}
+        onOk={handleContinuarAPago}
+        onCancel={cerrarModalReserva}
+        okText="Continuar al Pago →"
+        cancelText="Cancelar"
+        width={600}
+      >
+        <Form form={formReserva} layout="vertical">
+          
+          <Form.Item 
+            name="IdUsuario" 
+            label="👤 Cliente"
+            rules={[{ required: true, message: 'Selecciona un cliente' }]}
+          >
+            <Select 
+              placeholder="Seleccione un cliente"
+              showSearch
+              filterOption={(input, option) =>
+                option.children.toLowerCase().includes(input.toLowerCase())
+              }
+            >
+              {usuarios && usuarios.length > 0 ? (
+                usuarios.map(user => (
+                  <Option key={user.IdUsuario} value={user.IdUsuario}>
+                    {user.Nombre} {user.Apellido}
+                  </Option>
+                ))
+              ) : (
+                <Option disabled>No hay usuarios disponibles</Option>
+              )}
+            </Select>
+          </Form.Item>
+
+          <Form.Item 
+            name="IdVehiculo" 
+            label="Vehículo"
+            rules={[{ required: true, message: 'Selecciona un vehículo' }]}
+          >
+            <Select 
+              placeholder="Seleccione un vehículo"
+              showSearch
+              filterOption={(input, option) =>
+                option.children.toLowerCase().includes(input.toLowerCase())
+              }
+            >
+              {vehiculos && vehiculos.length > 0 ? (
+                vehiculos
+                  .filter(v => v.Estado === 'Disponible')
+                  .map(vehiculo => (
+                    <Option key={vehiculo.IdVehiculo} value={vehiculo.IdVehiculo}>
+                      {vehiculo.Marca} {vehiculo.Modelo} - ${vehiculo.PrecioDia}/día
+                    </Option>
+                  ))
+              ) : (
+                <Option disabled>No hay vehículos disponibles</Option>
+              )}
+            </Select>
+          </Form.Item>
+
+          <Form.Item 
+            name="fechas" 
+            label="📅 Fechas de Reserva"
+            rules={[{ required: true, message: 'Selecciona las fechas' }]}
+          >
+            <RangePicker 
+              style={{ width: '100%' }}
+              format="DD/MM/YYYY"
+              placeholder={['Fecha inicio', 'Fecha fin']}
+              disabledDate={(current) => {
+                return current && current < dayjs().startOf('day');
+              }}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+      <Modal
+        title={
+          <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
+            💳 Paso 2: Finalizar Pago
+          </div>
+        }
+        open={modalPagoVisible}
+        onOk={handleProcesarPago}
+        onCancel={volverAModalReserva}
+        okText={submitLoading ? "⏳ Procesando..." : `Pagar $${(totalCalculado * 1.15).toFixed(2)}`}
+        cancelText="← Volver"
+        confirmLoading={submitLoading}
+        width={650}
+        okButtonProps={{ 
+          size: 'large',
+          style: { height: '45px', fontSize: '16px' }
+        }}
+        cancelButtonProps={{ size: 'large' }}
+      >
+        <Form form={formPago} layout="vertical">
+          
+          {/* PERIODO DE RENTA */}
+          <div style={{ 
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+            padding: '20px', 
+            borderRadius: '12px', 
+            marginBottom: '20px',
+            color: 'white'
+          }}>
+            <h4 style={{ margin: '0 0 10px 0', color: 'white', fontSize: '16px' }}>
+              📋 Resumen de Reserva
+            </h4>
+            {datosReserva && (
+              <>
+                <p style={{ margin: '5px 0', fontSize: '14px' }}>
+                  <strong>Vehículo:</strong> {datosReserva.vehiculoNombre}
+                </p>
+                <p style={{ margin: '5px 0', fontSize: '14px' }}>
+                  <strong>Periodo:</strong> {dayjs(datosReserva.FechaInicio).format('DD/MM/YYYY')} - {dayjs(datosReserva.FechaFin).format('DD/MM/YYYY')}
+                </p>
+                <div style={{ 
+                  background: 'rgba(255,255,255,0.2)', 
+                  padding: '10px 15px', 
+                  borderRadius: '8px',
+                  marginTop: '10px'
+                }}>
+                  <p style={{ margin: 0, fontWeight: 'bold', fontSize: '15px' }}>
+                    ⏱️ Duración: {diasRenta} día{diasRenta !== 1 ? 's' : ''}
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* RESUMEN DE COSTOS */}
+          {totalCalculado > 0 && (() => {
+            const subtotalSinIva = totalCalculado;
+            const ivaCalculado = subtotalSinIva * 0.15;
+            const totalConIva = subtotalSinIva + ivaCalculado;
+            
+            return (
+              <div style={{ marginBottom: '20px', padding: '15px', background: '#f5f5f5', borderRadius: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <span>Subtotal (sin IVA):</span>
+                  <span>${subtotalSinIva.toFixed(2)}</span>
+                </div>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#fa8c16' }}>
+                  <span>IVA (15%):</span>
+                  <span>+${ivaCalculado.toFixed(2)}</span>
+                </div>
+                
+                <Divider style={{ margin: '12px 0' }} />
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '18px', fontWeight: 'bold' }}>
+                  <span>TOTAL A PAGAR:</span>
+                  <span style={{ color: '#52c41a' }}>${totalConIva.toFixed(2)}</span>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* DATOS BANCARIOS */}
+          <div style={{ 
+            background: '#f6ffed', 
+            padding: '20px', 
+            borderRadius: '12px', 
+            border: '2px solid #b7eb8f' 
+          }}>
+            <h4 style={{ marginTop: 0, color: '#52c41a', fontSize: '16px' }}>
+              🏦 Información de Pago
+            </h4>
+            
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item 
+                  name="cuentaUsuario" 
+                  label="Cédula del Cliente"
+                  rules={[{ 
+                    required: true, 
+                    message: 'Ingresa la cédula del cliente' 
+                  }]}
+                  tooltip="Cédula asociada a la cuenta bancaria del cliente"
+                >
+                  <Input 
+                    placeholder="Ej: 1720123456" 
+                    size="large"
+                    maxLength={10}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item 
+                  name="cuentaEmpresa" 
+                  label="Cuenta Destino"
+                  tooltip="Cuenta de la empresa"
+                >
+                  <Input 
+                    disabled 
+                    size="large"
+                    style={{ 
+                      color: '#333', 
+                      fontWeight: 'bold', 
+                      backgroundColor: '#f5f5f5',
+                      cursor: 'not-allowed'
+                    }} 
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+          </div>
+
+        </Form>
+      </Modal>
     </div>
   );
 };

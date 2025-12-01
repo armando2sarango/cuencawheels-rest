@@ -11,7 +11,6 @@ import { updateVehiculoThunk, fetchVehiculoById } from '../../store/autos/thunks
 import { getCarritoId, getUserId } from '../../services/auth'; 
 
 const { RangePicker } = DatePicker;
-
 const CarritoPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -393,8 +392,6 @@ useEffect(() => {
           </div>
         )}
       </Modal>
-
-      {/* --- MODAL DE PAGO Y FECHAS --- */}
       <Modal
         title={
           <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
@@ -404,7 +401,7 @@ useEffect(() => {
         open={isModalOpen}
         onOk={confirmarPagoYReserva}
         onCancel={() => !procesandoPago && setIsModalOpen(false)}
-        okText={procesandoPago ? "⏳ Procesando Transacción..." : `💰 Pagar $${(totalCalculado*1.15).toFixed(2)}`}
+        okText={procesandoPago ? "⏳ Procesando Transacción..." : `Pagar $${(totalCalculado*1.15).toFixed(2)}`}
         cancelText="Cancelar"
         confirmLoading={procesandoPago}
         closable={!procesandoPago}
@@ -418,8 +415,6 @@ useEffect(() => {
         cancelButtonProps={{ size: 'large' }}
       >
         <Form form={formPago} layout="vertical">
-            
-            {/* 1. SELECCIÓN DE FECHAS */}
             <div style={{ 
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
               padding: '20px', 
@@ -456,8 +451,6 @@ useEffect(() => {
                     </div>
                 )}
             </div>
-
-            {/* 2. RESUMEN DE COSTOS */}
 {totalCalculado > 0 && (() => {
   const subtotalSinIva = totalCalculado;
   const ivaCalculado = subtotalSinIva * 0.15;
@@ -465,7 +458,6 @@ useEffect(() => {
   
   return (
     <div>
-      {/* Items individuales */}
       {items.map((item, index) => {
         const precioDia = item.PrecioPorDia || item.PrecioDia || 0;
         const subtotalItem = precioDia * diasRenta;
@@ -479,22 +471,16 @@ useEffect(() => {
       })}
       
       <Divider />
-      
-      {/* Subtotal sin IVA */}
       <div>
         <span>Subtotal (sin IVA):</span>
         <span>${subtotalSinIva.toFixed(2)}</span>
       </div>
-      
-      {/* IVA */}
       <div style={{ color: '#fa8c16' }}>
         <span>IVA (15%):</span>
         <span>+${ivaCalculado.toFixed(2)}</span>
       </div>
       
       <Divider />
-      
-      {/* Total */}
       <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
         <span>TOTAL A PAGAR:</span>
         <span style={{ color: '#52c41a' }}>${totalConIva.toFixed(2)}</span>
@@ -502,8 +488,6 @@ useEffect(() => {
     </div>
   );
 })()}
-
-            {/* 3. DATOS BANCARIOS */}
             <div style={{ 
               background: '#f6ffed', 
               padding: '20px', 
@@ -551,28 +535,6 @@ useEffect(() => {
                         </Form.Item>
                     </Col>
                 </Row>
-                
-                <div style={{ 
-                  fontSize: '12px', 
-                  color: '#595959', 
-                  background: '#fff', 
-                  padding: '12px', 
-                  borderRadius: '8px',
-                  border: '1px solid #d9d9d9'
-                }}>
-                    <p style={{ margin: '4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ color: '#52c41a', fontSize: '16px' }}>✓</span>
-                      El sistema verificará saldo y disponibilidad automáticamente
-                    </p>
-                    <p style={{ margin: '4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ color: '#52c41a', fontSize: '16px' }}>✓</span>
-                      Se generará una factura electrónica por cada reserva
-                    </p>
-                    <p style={{ margin: '4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ color: '#52c41a', fontSize: '16px' }}>✓</span>
-                      El vehículo quedará marcado como "Rentado" tras la reserva
-                    </p>
-                </div>
             </div>
 
         </Form>

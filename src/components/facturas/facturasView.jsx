@@ -1,8 +1,20 @@
 import React, { useState } from 'react';
-import { Table, Button, Modal, Form, Input, InputNumber, DatePicker, message } from 'antd';
+import { Table, Button, Modal, Form, InputNumber, Select } from 'antd';
+import { FilePdfOutlined } from '@ant-design/icons';
 import moment from 'moment';
 
-const FacturasView = ({ facturas, loading, onCrear, onEditar }) => {
+const { Option } = Select;
+
+const FacturasView = ({ 
+  facturas, 
+  loading, 
+  usuarios = [], 
+  reservas = [], 
+  esAdmin, 
+  onCrear, 
+  onEditar, 
+  api 
+}) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [facturaActual, setFacturaActual] = useState(null);
@@ -16,16 +28,22 @@ const FacturasView = ({ facturas, loading, onCrear, onEditar }) => {
       form.setFieldsValue({
         IdReserva: factura.IdReserva,
         ValorTotal: factura.ValorTotal,
-        FechaEmision: factura.FechaEmision ? moment(factura.FechaEmision) : null,
-        UriFactura: factura.UriFactura,
-        Descripcion: factura.Descripcion
       });
     } else {
       form.resetFields();
-      form.setFieldsValue({ FechaEmision: moment() });
     }
 
     setModalVisible(true);
+  };
+
+  const handleReservaChange = (idReserva) => {
+    const reservaSeleccionada = reservas.find(r => r.IdReserva === idReserva);
+    
+    if (reservaSeleccionada && reservaSeleccionada.Total) {
+      form.setFieldsValue({
+        ValorTotal: parseFloat(reservaSeleccionada.Total)
+      });
+    }
   };
 
   const cerrarModal = () => {
@@ -39,66 +57,98 @@ const FacturasView = ({ facturas, loading, onCrear, onEditar }) => {
       const values = await form.validateFields();
       setSubmitLoading(true);
 
-      const facturaDto = {
-        ...values,
-        IdFactura: facturaActual ? facturaActual.IdFactura : undefined,
-        IdReserva: facturaActual ? facturaActual.IdReserva : values.IdReserva,
-        FechaEmision: values.FechaEmision ? values.FechaEmision.toISOString() : null
-      };
-
-      if (facturaActual) await onEditar(facturaDto);
-      else await onCrear(facturaDto);
+      if (facturaActual) {
+        const facturaDto = {
+          IdFactura: facturaActual.IdFactura,
+          IdReserva: facturaActual.IdReserva,
+          ValorTotal: values.ValorTotal,
+        };
+        await onEditar(facturaDto);
+      } else {
+        const facturaDto = {
+          IdReserva: values.IdReserva,
+          ValorTotal: values.ValorTotal
+        };
+        await onCrear(facturaDto);
+      }
 
       cerrarModal();
     } catch (err) {
       console.error(err);
-      message.error("Verifica los campos");
+      api.error({ 
+        message: 'Formulario incompleto', 
+        description: 'Verifica que todos los campos estén completos' 
+      });
     } finally {
       setSubmitLoading(false);
     }
   };
 
   const columnas = [
-    { title: "ID", dataIndex: "IdFactura", width: 60 },
-    { title: "ID Reserva", dataIndex: "IdReserva", width: 100 },
+    { 
+      title: "ID", 
+      dataIndex: "IdFactura", 
+      width: 60 
+    },
+    { 
+      title: "ID Reserva", 
+      dataIndex: "IdReserva", 
+      width: 100 
+    },
     { 
       title: "Fecha Emisión", 
       dataIndex: "FechaEmision",
-      render: (fecha) => fecha ? new Date(fecha).toLocaleDateString() : "-"
+      render: (fecha) => fecha ? moment(fecha).format('DD/MM/YYYY HH:mm') : "-"
     },
     { 
       title: "Valor Total", 
       dataIndex: "ValorTotal",
-      render: (valor) => `$ ${parseFloat(valor).toFixed(2)}`
+      render: (valor) => `$${parseFloat(valor).toFixed(2)}`
     },
     {
-      title: "Documento",
+      title: "PDF",
       dataIndex: "UriFactura",
-      render: (uri) => uri ? <a href={uri} target="_blank" rel="noopener noreferrer">Ver PDF</a> : "Sin archivo"
-    },
-    { 
-      title: "Descripción", 
-      dataIndex: "Descripcion",
-      ellipsis: true 
+      render: (uri) => uri ? (
+        <Button 
+          type="link" 
+          icon={<FilePdfOutlined />}
+          href={uri} 
+          target="_blank" 
+          rel="noopener noreferrer"
+        >
+          Ver PDF
+        </Button>
+      ) : "Generando..."
     },
     {
       title: "Acciones",
-      width: 200,
-      render: (_, factura) => (
-        <div style={{ display: "flex", gap: "10px" }}>
-          <Button type="primary" size="small" onClick={() => abrirModal(factura)}>Editar</Button>
-        </div>
+      width: 150,
+      render: (_, factura) => esAdmin && (
+        <Button 
+          type="primary" 
+          size="small" 
+          onClick={() => abrirModal(factura)}
+        >
+          Editar
+        </Button>
       )
     }
   ];
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h2>Gestión de Facturas</h2>
-        <Button type="primary" onClick={() => abrirModal()}>
-          Nueva Factura
-        </Button>
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        marginBottom: 16 
+      }}>
+        <h2>📄 Gestión de Facturas</h2>
+        {esAdmin && (
+          <Button type="primary" onClick={() => abrirModal()}>
+            + Nueva Factura
+          </Button>
+        )}
       </div>
 
       <Table
@@ -106,49 +156,64 @@ const FacturasView = ({ facturas, loading, onCrear, onEditar }) => {
         dataSource={facturas}
         loading={loading}
         rowKey={(f) => f.IdFactura}
-        pagination={{ pageSize: 8 }}
+        pagination={{ pageSize: 10 }}
       />
+
       <Modal
-        title={facturaActual ? "Editar Factura" : "Crear Factura"}
+        title={
+          <span style={{ fontSize: '18px', fontWeight: 'bold' }}>
+            {facturaActual ? "✏️ Editar Factura" : "📝 Crear Nueva Factura"}
+          </span>
+        }
         open={modalVisible}
         onOk={handleSubmit}
         onCancel={cerrarModal}
         confirmLoading={submitLoading}
+        okText={facturaActual ? "Actualizar" : "Crear Factura"}
+        cancelText="Cancelar"
+        width={600}
       >
         <Form form={form} layout="vertical">
+          
+          {/* SELECT DE RESERVAS */}
           <Form.Item 
             name="IdReserva" 
-            label="ID Reserva" 
-            rules={[{ required: true, message: 'Requerido' }]}
+            label="🎫 Reserva"
+            rules={[{ required: true, message: 'Selecciona una reserva' }]}
           >
-            <InputNumber 
-                style={{ width: '100%' }} 
-                placeholder="Ej: 1" 
-                disabled={!!facturaActual} 
-            />
+            <Select 
+              placeholder="Selecciona una reserva"
+              showSearch
+              disabled={!!facturaActual}
+              onChange={handleReservaChange}
+              filterOption={(input, option) =>
+                option.children.toLowerCase().includes(input.toLowerCase())
+              }
+            >
+              {reservas.map(reserva => (
+                <Option key={reserva.IdReserva} value={reserva.IdReserva}>
+                  Reserva #{reserva.IdReserva} - {reserva.NombreUsuario || `Usuario ${reserva.IdUsuario}`} - {reserva.VehiculoNombre || 'Vehículo'}
+                </Option>
+              ))}
+            </Select>
           </Form.Item>
-
-          <Form.Item name="ValorTotal" label="Valor Total" rules={[{ required: true, message: 'Requerido' }]}>
+          <Form.Item 
+            name="ValorTotal" 
+            label="💵 Valor Total"
+            rules={[
+              { required: true, message: 'Ingresa el valor total' },
+              { type: 'number', min: 0.01, message: 'Debe ser mayor a 0' }
+            ]}
+            tooltip="Este valor se carga automáticamente desde la reserva (incluye IVA 15%)"
+          >
             <InputNumber 
               style={{ width: '100%' }} 
               prefix="$" 
               precision={2}
               step={0.01}
+              placeholder="Se llenará automáticamente al seleccionar reserva"
             />
           </Form.Item>
-
-          <Form.Item name="FechaEmision" label="Fecha Emisión" rules={[{ required: true }]}>
-            <DatePicker showTime style={{ width: '100%' }} />
-          </Form.Item>
-
-          <Form.Item name="UriFactura" label="URL Factura (PDF)">
-            <Input placeholder="https://..." />
-          </Form.Item>
-
-          <Form.Item name="Descripcion" label="Descripción">
-            <Input.TextArea rows={3} />
-          </Form.Item>
-
         </Form>
       </Modal>
     </div>

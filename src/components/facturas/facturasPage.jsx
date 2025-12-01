@@ -1,26 +1,56 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { message } from 'antd';
+import { notification } from 'antd';
 import FacturasView from './facturasView';
-import { fetchfacturas,createFacturaThunk,updateFacturaThunk, } from '../../store/facturas/thunks';
+import { 
+  fetchfacturas, 
+  createFacturaThunk, 
+  updateFacturaThunk 
+} from '../../store/facturas/thunks';
+import { fetchUsuarios } from '../../store/usuarios/thunks';
+import { fetchReservas } from '../../store/reservas/thunks';
+import { isAdmin } from '../../services/auth';
+
 const FacturasPage = () => {
   const dispatch = useDispatch();
+  const [api, contextHolder] = notification.useNotification();
   
-  const { facturas, loading, error } = useSelector(state => state.facturas);
+  const { facturas, loading } = useSelector(state => state.facturas);
+  const { items: usuarios } = useSelector(state => state.usuarios || { items: [] });
+  const { items: reservas } = useSelector(state => state.reservas || { items: [] });
+  
+  const esAdmin = isAdmin();
 
   useEffect(() => {
     dispatch(fetchfacturas());
-  }, [dispatch]);
+    if (esAdmin) {
+      dispatch(fetchUsuarios()); // Cargar usuarios para el select
+      dispatch(fetchReservas());  // Cargar reservas para el select
+    }
+  }, [dispatch, esAdmin]);
 
   const handleCrear = async (factura) => {
     try {
-      await dispatch(createFacturaThunk(factura)).unwrap();
-      message.success("Factura creada correctamente");
+      // Crear el payload con la estructura que espera el backend
+      const payload = {
+        IdReserva: factura.IdReserva,
+        ValorTotal: factura.ValorTotal
+      };
+
+      await dispatch(createFacturaThunk(payload)).unwrap();
+      
+      api.success({ 
+        message: '✅ Factura creada', 
+      });
+      
       dispatch(fetchfacturas());
       return true;
     } catch (err) {
       console.error(err);
-      message.error("Error al crear factura");
+      api.error({ 
+        message: ' Error al crear', 
+        description: err.message || 'No se pudo crear la factura' 
+      });
       return false;
     }
   };
@@ -31,23 +61,38 @@ const FacturasPage = () => {
         idFactura: factura.IdFactura,
         body: factura
       })).unwrap();
-      message.success("Factura actualizada correctamente");
+      
+      api.success({ 
+        message: '✅ Factura actualizada', 
+        description: 'Los cambios se guardaron correctamente' 
+      });
+      
       dispatch(fetchfacturas());
       return true;
     } catch (err) {
       console.error(err);
-      message.error("Error al actualizar factura");
+      api.error({ 
+        message: '❌ Error al actualizar', 
+        description: err.message || 'No se pudo actualizar la factura' 
+      });
       return false;
     }
   };
+
   return (
-    <FacturasView
-      facturas={facturas}
-      loading={loading}
-      error={error}
-      onCrear={handleCrear}
-      onEditar={handleEditar}
-    />
+    <>
+      {contextHolder}
+      <FacturasView
+        facturas={facturas}
+        loading={loading}
+        usuarios={usuarios}
+        reservas={reservas}
+        esAdmin={esAdmin}
+        onCrear={handleCrear}
+        onEditar={handleEditar}
+        api={api} 
+      />
+    </>
   );
 };
 
