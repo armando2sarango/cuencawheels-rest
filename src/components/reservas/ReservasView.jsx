@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { 
-  Table, Card, Tag, Button, Space, Popconfirm, Tooltip, Typography, Empty, Modal, Form, InputNumber, Select 
+  Table, Card, Tag, Button, Space, Popconfirm, Tooltip, Typography, Empty 
 } from 'antd';
 import { 
   CloseCircleOutlined, 
@@ -9,9 +9,7 @@ import {
   CarOutlined,
   CheckOutlined,
   FlagOutlined,
-  BankOutlined,
-  DollarOutlined,
-  CheckCircleOutlined
+  DollarOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
@@ -26,11 +24,6 @@ const ReservasView = ({
   onRefresh,
   onVerPagos
 }) => {
-  // --- ESTADOS PARA EL MODAL DE PAGO ---
-  const [modalPagoVisible, setModalPagoVisible] = useState(false);
-  const [reservaAFinalizar, setReservaAFinalizar] = useState(null);
-  const [formPago] = Form.useForm();
-  const [metodoPago, setMetodoPago] = useState('Banco'); 
 
   const getColorEstado = (estado) => {
     switch (estado?.toLowerCase()) {
@@ -44,39 +37,14 @@ const ReservasView = ({
     }
   };
 
-  const abrirModalPago = (record) => {
-    setReservaAFinalizar(record);
-    setMetodoPago('Banco'); 
-    formPago.resetFields();
-    formPago.setFieldsValue({
-        Monto: record.Total,
-        Metodo: 'Banco',
-        CuentaComercio: 999999 
-    });
-    setModalPagoVisible(true);
-  };
-
-  const handleConfirmarPago = async () => {
-    try {
-        const valoresPago = await formPago.validateFields();
-        await onCambiarEstado(
-            reservaAFinalizar.IdReserva, 
-            'Finalizada', 
-            reservaAFinalizar, 
-            valoresPago 
-        );
-        
-        setModalPagoVisible(false);
-        setReservaAFinalizar(null);
-        formPago.resetFields();
-    } catch (error) {
-        console.error("Validación fallida:", error);
-    }
-  };
-
-  // --- DEFINICIÓN DINÁMICA DE COLUMNAS ---
+  // --- COLUMNAS BASE ---
   const baseColumns = [
-    { title: 'ID', dataIndex: 'IdReserva', width: 60, key: 'id' },
+    { 
+      title: 'ID', 
+      dataIndex: 'IdReserva', 
+      width: 60, 
+      key: 'id' 
+    },
     {
       title: 'Vehículo',
       key: 'vehiculo',
@@ -93,18 +61,17 @@ const ReservasView = ({
         </Space>
       ),
     },
-    // 1. Columna Cliente: SOLO visible si es Admin
     {
       title: 'Cliente',
       key: 'cliente',
       render: (_, record) => (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <Text strong>
-                {record.NombreUsuario || record.nombreUsuario || `ID: ${record.IdUsuario}`}
-            </Text>
-            <Text type="secondary" style={{ fontSize: '12px' }}>
-                {record.CorreoUsuario || record.email}
-            </Text>
+          <Text strong>
+            {record.NombreUsuario || record.nombreUsuario || `ID: ${record.IdUsuario}`}
+          </Text>
+          <Text type="secondary" style={{ fontSize: '12px' }}>
+            {record.CorreoUsuario || record.email}
+          </Text>
         </div>
       )
     },
@@ -135,61 +102,102 @@ const ReservasView = ({
         </Tag>
       )
     },
-    // 2. Columna Acciones: Visible para Admin Y Cliente (si tiene acción de cancelar)
     {
       title: 'Acciones',
       key: 'acciones',
-      width: 160,
+      width: 180,
       render: (_, record) => {
         const estado = record.Estado ? record.Estado.toLowerCase() : '';
 
         return (
           <Space size="small">
+            
+            {/* 👁️ Ver Pagos - Cliente (solo si está confirmada o finalizada) */}
             {!esAdmin && (estado === 'confirmada' || estado === 'finalizada' || estado === 'aprobada') && (
-                <Tooltip title="Ver Pagos Registrados">
-                    <Button 
-                        type="link" 
-                        icon={<DollarOutlined />} 
-                        style={{ color: '#52c41a', paddingLeft: 0, paddingRight: 0 }}
-                        onClick={() => onVerPagos(record.IdReserva)} // <-- LLAMAR A LA FUNCIÓN
-                    >
-                        Ver Pago
-                    </Button>
-                </Tooltip>
+              <Tooltip title="Ver Facturas">
+                <Button 
+                  type="link" 
+                  icon={<DollarOutlined />} 
+                  style={{ color: '#52c41a', paddingLeft: 0, paddingRight: 0 }}
+                  onClick={() => onVerPagos(record.IdReserva, record.IdUsuario)}
+                >
+                  Ver Facturas
+                </Button>
+              </Tooltip>
             )}
 
-            {/* CLIENTE: SOLO ve el botón Cancelar si está pendiente */}
-            {!esAdmin && estado === 'pendiente' && (
-              <Popconfirm title="¿Cancelar reserva?" onConfirm={() => onEliminar(record.IdReserva)}>
-                <Button danger size="small" icon={<DeleteOutlined />}>Cancelar</Button>
-              </Popconfirm>
-            )}
+            {/* ❌ Cancelar - Cliente (solo si está pendiente) */}
+            {!esAdmin && estado === 'pendiente' && (
+              <Popconfirm 
+                title="¿Cancelar reserva?" 
+                onConfirm={() => onEliminar(record.IdReserva)}
+              >
+                <Button danger size="small" icon={<DeleteOutlined />}>
+                  Cancelar
+                </Button>
+              </Popconfirm>
+            )}
 
-            {/* ADMIN: Todos los botones */}
+            {/* ✅ Confirmar / ❌ Rechazar - Admin (solo si está pendiente) */}
             {esAdmin && estado === 'pendiente' && (
               <>
-                <Tooltip title="Confirmar">
-                  <Button type="primary" shape="circle" size="small" icon={<CheckOutlined />} style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }} onClick={() => onCambiarEstado(record.IdReserva, 'Confirmada', record)} />
+                <Tooltip title="Confirmar Reserva">
+                  <Button 
+                    type="primary" 
+                    shape="circle" 
+                    size="small" 
+                    icon={<CheckOutlined />} 
+                    style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }} 
+                    onClick={() => onCambiarEstado(record.IdReserva, 'Confirmada', record)} 
+                  />
                 </Tooltip>
-                <Tooltip title="Rechazar">
-                  <Button type="primary" danger shape="circle" size="small" icon={<CloseCircleOutlined />} onClick={() => onCambiarEstado(record.IdReserva, 'Rechazada', record)} />
+                <Tooltip title="Rechazar Reserva">
+                  <Button 
+                    type="primary" 
+                    danger 
+                    shape="circle" 
+                    size="small" 
+                    icon={<CloseCircleOutlined />} 
+                    onClick={() => onCambiarEstado(record.IdReserva, 'Rechazada', record)} 
+                  />
                 </Tooltip>
               </>
             )}
 
+            {/* 🏁 Finalizar - Admin (solo si está confirmada o aprobada) */}
             {esAdmin && (estado === 'confirmada' || estado === 'aprobada') && (
-               <Tooltip title="Finalizar y Cobrar">
-                 <Button size="small" type="primary" ghost icon={<FlagOutlined />} onClick={() => abrirModalPago(record)}>
-                   Finalizar
-                 </Button>
-               </Tooltip>
-            )},
-            
+              <Popconfirm
+                title="¿Finalizar esta renta?"
+                description="El vehículo quedará disponible nuevamente."
+                onConfirm={() => onCambiarEstado(record.IdReserva, 'Finalizada', record)}
+                okText="Sí, finalizar"
+                cancelText="Cancelar"
+              >
+                <Tooltip title="Finalizar Renta">
+                  <Button 
+                    size="small" 
+                    type="primary" 
+                    icon={<FlagOutlined />}
+                  >
+                    Finalizar
+                  </Button>
+                </Tooltip>
+              </Popconfirm>
+            )}
 
+            {/* 🗑️ Eliminar del Historial - Admin (solo si ya está finalizada, rechazada o cancelada) */}
             {esAdmin && (estado === 'rechazada' || estado === 'cancelada' || estado === 'finalizada') && (
-               <Popconfirm title="Borrar historial" onConfirm={() => onEliminar(record.IdReserva)}>
-                  <Button type="text" danger size="small" icon={<DeleteOutlined />} />
-               </Popconfirm>
+              <Popconfirm 
+                title="¿Eliminar del historial?" 
+                onConfirm={() => onEliminar(record.IdReserva)}
+              >
+                <Button 
+                  type="text" 
+                  danger 
+                  size="small" 
+                  icon={<DeleteOutlined />} 
+                />
+              </Popconfirm>
             )}
             
           </Space>
@@ -198,34 +206,28 @@ const ReservasView = ({
     }
   ];
 
-  // Filtramos las columnas según el rol
+  // Filtramos columnas según el rol
   const finalColumns = baseColumns.filter(col => {
-      // Si no es admin, ocultamos la columna 'Cliente'
-      if (col.key === 'cliente' && !esAdmin) return false;
-      
-      // Si no es admin, ocultamos la columna 'Acciones' solo si NO es un estado pendiente
-      // (Para mantener el botón de Cancelar del cliente si está Pendiente)
-      if (col.key === 'acciones' && !esAdmin) {
-          // Si el cliente no tiene ninguna acción disponible, podríamos ocultar la columna
-          // Pero la dejamos visible para que el botón de cancelar dentro se maneje.
-          // Aquí podríamos poner una lógica más compleja si quisiéramos ocultar la columna si no hay NADA que hacer.
-          // Por ahora, la dejamos visible para el cliente si hay alguna acción que hacer (como cancelar).
-      }
-      
-      return true;
+    // Ocultamos columna 'Cliente' si NO es admin
+    if (col.key === 'cliente' && !esAdmin) return false;
+    return true;
   });
 
   return (
     <div style={{ padding: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <Title level={2}>{esAdmin ? "Gestión de Reservas (Admin)" : "Mis Reservas"}</Title>
-        <Button icon={<SyncOutlined />} onClick={onRefresh}>Actualizar</Button>
+        <Title level={2}>
+          {esAdmin ? "Gestión de Reservas (Admin)" : "Mis Reservas"}
+        </Title>
+        <Button icon={<SyncOutlined />} onClick={onRefresh}>
+          Actualizar
+        </Button>
       </div>
 
       <Card>
         <Table 
           dataSource={reservas} 
-          columns={finalColumns} // Usamos las columnas filtradas
+          columns={finalColumns}
           rowKey="IdReserva" 
           loading={loading}
           locale={{ emptyText: <Empty description="No hay reservas" /> }}
@@ -233,69 +235,6 @@ const ReservasView = ({
           scroll={{ x: 800 }}
         />
       </Card>
-
-      {/* --- MODAL DE PAGO MEJORADO --- */}
-      <Modal
-        title="Finalizar Renta y Registrar Pago"
-        open={modalPagoVisible}
-        onOk={handleConfirmarPago}
-        onCancel={() => setModalPagoVisible(false)}
-        okText="Procesar Pago"
-        cancelText="Cancelar"
-      >
-        <Form form={formPago} layout="vertical">
-            
-            {/* 1. Selector de Método */}
-            <Form.Item 
-                name="Metodo" 
-                label="Método de Pago" 
-                rules={[{ required: true }]}
-            >
-                <Select onChange={(value) => setMetodoPago(value)}>
-                    <Select.Option value="Banco">Transferencia Bancaria</Select.Option>
-                    <Select.Option value="Efectivo">Efectivo</Select.Option>
-                </Select>
-            </Form.Item>
-
-            {/* 2. Campos Bancarios (Condicionales) */}
-            {metodoPago === 'Banco' && (
-                <>
-                    <div style={{ background: '#e6f7ff', padding: '10px', borderRadius: '5px', marginBottom: '15px' }}>
-                        <small>Ingrese cuentas válidas para verificar la transacción.</small>
-                    </div>
-                    <Form.Item 
-                        name="CuentaCliente" 
-                        label="Cuenta del Cliente" 
-                        rules={[{ required: true, message: 'Requerido para transferencia' }]}
-                    >
-                        <InputNumber style={{ width: '100%' }} prefix={<BankOutlined />} placeholder="Ej: 100500..." />
-                    </Form.Item>
-
-                    <Form.Item 
-                        name="CuentaComercio" 
-                        label="Cuenta Empresa" 
-                        rules={[{ required: true, message: 'Requerido para transferencia' }]}
-                    >
-                        <InputNumber style={{ width: '100%' }} prefix={<BankOutlined />} />
-                    </Form.Item>
-                </>
-            )}
-
-            {/* 3. Mensaje Efectivo */}
-            {metodoPago === 'Efectivo' && (
-                <div style={{ background: '#f6ffed', border: '1px solid #b7eb8f', padding: '15px', borderRadius: '5px', marginBottom: '15px' }}>
-                    <CheckCircleOutlined style={{ color: '#52c41a' }} /> <strong>Pago en Efectivo</strong>
-                    <p style={{ margin: '5px 0 0 0', fontSize: '12px', color: '#666' }}>
-                        El sistema registrará el pago inmediatamente y generará la factura.
-                    </p>
-                </div>
-            )}
-
-            <Form.Item name="Monto" label="Monto a Cobrar ($)">
-                <InputNumber style={{ width: '100%' }} prefix={<DollarOutlined />} disabled />
-            </Form.Item>
-        </Form>
-      </Modal>
     </div>
   );
 };

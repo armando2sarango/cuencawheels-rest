@@ -29,7 +29,9 @@ const reservasSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // --- FETCH ALL (ADMIN) ---
+      // ============================================================
+      // 🔵 FETCH ALL (ADMIN)
+      // ============================================================
       .addCase(fetchReservas.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -40,10 +42,12 @@ const reservasSlice = createSlice({
       })
       .addCase(fetchReservas.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Error al cargar reservas';
+        state.error = action.payload || action.error.message || 'Error al cargar reservas';
       })
 
-      // --- FETCH BY USUARIO ---
+      // ============================================================
+      // 🔵 FETCH BY USUARIO
+      // ============================================================
       .addCase(fetchReservasIdUsuario.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -54,57 +58,117 @@ const reservasSlice = createSlice({
       })
       .addCase(fetchReservasIdUsuario.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Error al cargar reservas del usuario';
+        state.error = action.payload || action.error.message || 'Error al cargar reservas del usuario';
       })
 
-      // --- FETCH SINGLE BY ID ---
+      // ============================================================
+      // 🔍 FETCH SINGLE BY ID
+      // ============================================================
+      .addCase(fetchReservaById.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(fetchReservaById.fulfilled, (state, action) => {
+        state.loading = false;
         state.selectedItem = action.payload;
       })
+      .addCase(fetchReservaById.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || action.error.message || 'Error al cargar la reserva';
+      })
 
-      // --- CREATE ---
+      // ============================================================
+      // 🟢 CREATE (CRÍTICO - Captura errores del banco)
+      // ============================================================
       .addCase(createReservaThunk.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(createReservaThunk.fulfilled, (state, action) => {
         state.loading = false;
-        if (action.payload) {
-          state.items.push(action.payload); // Agregamos a la lista local
+        state.error = null;
+        console.log('✅ Slice recibió payload:', action.payload);
+        
+        // Si viene el objeto reserva dentro
+        if (action.payload?.reserva) {
+          state.items.push(action.payload.reserva);
+        } 
+        // Si viene directamente
+        else if (action.payload) {
+          state.items.push(action.payload);
         }
       })
       .addCase(createReservaThunk.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Error al crear reserva';
+        // ✅ AQUÍ CAPTURAMOS EL ERROR PROPAGADO
+        state.error = action.payload || action.error.message || 'Error al crear reserva';
+        console.error('🔴 Slice capturó error:', state.error);
       })
 
-      // --- UPDATE ---
+      // ============================================================
+      // 🟠 UPDATE
+      // ============================================================
+      .addCase(updateReservaThunk.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(updateReservaThunk.fulfilled, (state, action) => {
         state.loading = false;
+        state.error = null;
+        
         // Actualizamos en la lista
         const index = state.items.findIndex(r => r.IdReserva === action.meta.arg.id);
         if (index !== -1) {
           state.items[index] = { ...state.items[index], ...action.payload };
         }
       })
+      .addCase(updateReservaThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || action.error.message || 'Error al actualizar';
+      })
 
-      // --- UPDATE ESTADO ---
+      // ============================================================
+      // 🔧 UPDATE ESTADO
+      // ============================================================
+      .addCase(updateEstadoReservaThunk.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(updateEstadoReservaThunk.fulfilled, (state, action) => {
         state.loading = false;
+        state.error = null;
+        
         // Actualizamos solo el estado en la lista local
         const index = state.items.findIndex(r => r.IdReserva === action.payload.id);
         if (index !== -1) {
-           // Si la API devuelve el objeto completo, úsalo. Si no, actualiza manualmente.
+           // Si la API devuelve el objeto completo, úsalo
            if (action.payload.data) {
                state.items[index] = action.payload.data;
            }
         }
       })
+      .addCase(updateEstadoReservaThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || action.error.message || 'Error al cambiar estado';
+      })
 
-      // --- DELETE ---
+      // ============================================================
+      // 🔴 DELETE
+      // ============================================================
+      .addCase(deleteReservaThunk.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(deleteReservaThunk.fulfilled, (state, action) => {
         state.loading = false;
+        state.error = null;
+        
         // Filtramos usando el ID que devolvió el thunk
         state.items = state.items.filter(r => r.IdReserva !== action.payload);
+      })
+      .addCase(deleteReservaThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || action.error.message || 'Error al eliminar';
       });
   }
 });

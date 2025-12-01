@@ -1,64 +1,116 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import * as reservaAPI from './restCalls';
 
-// Traer todas (Admin)
+// ============================================================
+// 🔵 Traer todas las reservas (Admin)
+// ============================================================
 export const fetchReservas = createAsyncThunk(
   'reserva/fetchAll',
-  async () => {
-    // CORREGIDO: Se agregaron paréntesis () y nombre correcto
-    const data = await reservaAPI.getReservas(); 
-    return data;
+  async (_, { rejectWithValue }) => {
+    try {
+      const data = await reservaAPI.getReservas(); 
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Error al cargar reservas');
+    }
   }
 );
 
-// Traer una sola por ID
+// ============================================================
+// 🔍 Traer una reserva por ID
+// ============================================================
 export const fetchReservaById = createAsyncThunk(
-  'reserva/fetchById', // CORREGIDO: Nombre único
-  async (id) => {
-    const data = await reservaAPI.getReservaById(id);
-    return data;
+  'reserva/fetchById',
+  async (id, { rejectWithValue }) => {
+    try {
+      const data = await reservaAPI.getReservaById(id);
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Error al cargar la reserva');
+    }
   }
 );
 
-// Traer reservas de un usuario
+// ============================================================
+// 🔵 Traer reservas de un usuario específico
+// ============================================================
 export const fetchReservasIdUsuario = createAsyncThunk(
-  'reserva/fetchByUsuario', // CORREGIDO: Nombre único
-  async (idUsuario) => {
-    const data = await reservaAPI.getReservaByIdUsuario(idUsuario);
-    return data;
+  'reserva/fetchByUsuario',
+  async (idUsuario, { rejectWithValue }) => {
+    try {
+      const data = await reservaAPI.getReservaByIdUsuario(idUsuario);
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Error al cargar reservas del usuario');
+    }
   }
 );
 
+// ============================================================
+// 🟢 CREAR RESERVA (CRÍTICO - Con manejo de errores del banco)
+// ============================================================
 export const createReservaThunk = createAsyncThunk(
   'reserva/create',
-  async (body) => {
-    // CORREGIDO: Nombre de la función createReserva (CamelCase)
-    const data = await reservaAPI.createReserva(body);
-    return data;
+  async (body, { rejectWithValue }) => {
+    try {
+      console.log('📤 Thunk enviando reserva:', body);
+      const data = await reservaAPI.createReserva(body);
+      console.log('✅ Thunk recibió respuesta exitosa:', data);
+      return data;
+    } catch (error) {
+      console.error('❌ Thunk capturó error:', error);
+      console.error('❌ Mensaje del error:', error.message);
+      
+      // El error ya viene con el mensaje correcto desde createReserva
+      const mensajeError = error.message || 'Error desconocido al crear la reserva';
+      console.error('🔴 Mensaje propagado al componente:', mensajeError);
+      
+      return rejectWithValue(mensajeError);
+    }
   }
 );
 
+// ============================================================
+// 🟠 ACTUALIZAR RESERVA
+// ============================================================
 export const updateReservaThunk = createAsyncThunk(
   'reserva/update',
-  async ({ id, body }) => {
-    const data = await reservaAPI.updateReserva(id, body);
-    return data;
+  async ({ id, body }, { rejectWithValue }) => {
+    try {
+      const data = await reservaAPI.updateReserva(id, body);
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Error al actualizar la reserva');
+    }
   }
 );
 
-// Nuevo Thunk para cambio de estado
+// ============================================================
+// 🔧 ACTUALIZAR ESTADO DE RESERVA
+// ============================================================
 export const updateEstadoReservaThunk = createAsyncThunk(
   'reserva/updateEstado',
-  async ({ id, estado }) => {
-    const data = await reservaAPI.updateEstado(id, estado);
-    return { id, data }; 
+  async ({ id, estado }, { rejectWithValue }) => {
+    try {
+      const data = await reservaAPI.updateEstado(id, estado);
+      return { id, data }; 
+    } catch (error) {
+      return rejectWithValue(error.message || 'Error al cambiar el estado');
+    }
   }
 );
 
+// ============================================================
+// 🔴 ELIMINAR RESERVA
+// ============================================================
 export const deleteReservaThunk = createAsyncThunk(
   'reserva/delete',
-  async (id) => {
-    await reservaAPI.deleteReserva(id);
-    return id; 
+  async (id, { rejectWithValue }) => {
+    try {
+      await reservaAPI.deleteReserva(id);
+      return id; 
+    } catch (error) {
+      return rejectWithValue(error.message || 'Error al eliminar la reserva');
+    }
   }
 );

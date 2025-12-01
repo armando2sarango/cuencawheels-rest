@@ -13,7 +13,15 @@ export async function getfacturas() {
     return [];
   }
 }
-
+export async function getFacturasByUsuario(idUsuario) {
+  try {
+    const response = await makeRequest(HttpMethod.GET, `/facturas/usuario/${idUsuario}`);
+    if (!response.success) return [];
+    return response.data?.data || response.data || [];
+  } catch (error) {
+    throw error;
+  }
+}
 export async function getFacturaById(id) {
   try {
     // ✅ CORRECCIÓN: Usamos 'id', no 'idFactura'

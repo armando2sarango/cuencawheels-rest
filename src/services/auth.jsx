@@ -51,7 +51,7 @@ export const isCliente = () => {
 
 export const getCarritoId = () => {
   const authData = getAuth();
-  return authData?.idCarrito || null;
+  return authData?.carritoId || null;
 };
 
 export const getUserRole = () => {

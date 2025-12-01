@@ -73,8 +73,6 @@ const AutosPage = () => {
       const respuesta = await dispatch(createCarritoThunk({
           IdUsuario: idUsuario, 
           IdVehiculo: idVehiculo, 
-          FechaInicio: fechas[0], 
-          FechaFin: fechas[1]
       })).unwrap();
       const idCarritoNuevo = respuesta.IdCarrito || respuesta.idCarrito || (respuesta.data && respuesta.data.IdCarrito);
 
