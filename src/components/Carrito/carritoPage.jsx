@@ -11,6 +11,7 @@ import { updateVehiculoThunk, fetchVehiculoById } from '../../store/autos/thunks
 import { getCarritoId, getUserId } from '../../services/auth'; 
 
 const { RangePicker } = DatePicker;
+
 const CarritoPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -24,6 +25,9 @@ const CarritoPage = () => {
   const [vehiculoDetalle, setVehiculoDetalle] = useState(null);
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
   
+  // NUEVO: Estado para el vehículo seleccionado
+  const [vehiculoSeleccionado, setVehiculoSeleccionado] = useState(null);
+  
   const CUENTA_EMPRESA = "1756177158"; 
   
   const [formPago] = Form.useForm();
@@ -33,29 +37,29 @@ const CarritoPage = () => {
     cargarCarrito(); 
   }, []);
 
-useEffect(() => {
-  if (
-    fechasSeleccionadas &&
-    fechasSeleccionadas.length === 2 &&
-    fechasSeleccionadas[0] &&
-    fechasSeleccionadas[1]
-  ) {
-    const dias = fechasSeleccionadas[1].diff(fechasSeleccionadas[0], 'day');
-    const diasReales = dias > 0 ? dias : 1;
-    setDiasRenta(diasReales);
+  useEffect(() => {
+    if (
+      fechasSeleccionadas &&
+      fechasSeleccionadas.length === 2 &&
+      fechasSeleccionadas[0] &&
+      fechasSeleccionadas[1] &&
+      vehiculoSeleccionado
+    ) {
+      const dias = fechasSeleccionadas[1].diff(fechasSeleccionadas[0], 'day');
+      const diasReales = dias > 0 ? dias : 1;
+      setDiasRenta(diasReales);
 
-    const totalSinIva = items.reduce((acc, item) => {
-      const precioDia = item.PrecioPorDia || item.PrecioDia || 0;
-      return acc + precioDia * diasReales;
-    }, 0);
+      // Calcular solo para el vehículo seleccionado
+      const precioDia = vehiculoSeleccionado.PrecioPorDia || vehiculoSeleccionado.PrecioDia || 0;
+      const totalSinIva = precioDia * diasReales;
 
-    setTotalCalculado(totalSinIva); 
+      setTotalCalculado(totalSinIva); 
 
-  } else {
-    setDiasRenta(0);
-    setTotalCalculado(0);
-  }
-}, [fechasSeleccionadas, items]);
+    } else {
+      setDiasRenta(0);
+      setTotalCalculado(0);
+    }
+  }, [fechasSeleccionadas, vehiculoSeleccionado]);
 
   const cargarCarrito = () => {
     const idCarritoStorage = getCarritoId();
@@ -67,12 +71,30 @@ useEffect(() => {
   const handleEliminar = async (idItem) => {
     try {
       await dispatch(deleteCarritoThunk(idItem)).unwrap();
+      
+      // Si el eliminado era el seleccionado, limpiar selección
+      if (vehiculoSeleccionado?.IdItem === idItem) {
+        setVehiculoSeleccionado(null);
+      }
+      
       api.success({ message: 'Eliminado', description: 'Vehículo removido del carrito.' });
       cargarCarrito();
     } catch (error) {
       api.error({ message: 'Error', description: 'No se pudo eliminar.' });
     }
   };
+
+  // NUEVO: Manejar selección de vehículo
+  const handleSeleccionarVehiculo = (item) => {
+    if (vehiculoSeleccionado?.IdItem === item.IdItem) {
+      // Si ya está seleccionado, deseleccionar
+      setVehiculoSeleccionado(null);
+    } else {
+      // Seleccionar este vehículo
+      setVehiculoSeleccionado(item);
+    }
+  };
+
   const verDetalles = async (idVehiculo) => {
     setCargandoDetalle(true);
     setDetallesVisible(true);
@@ -95,6 +117,7 @@ useEffect(() => {
     setDetallesVisible(false);
     setVehiculoDetalle(null);
   };
+
   const abrirModalReserva = () => {
     const idUsuario = getUserId();
     
@@ -105,6 +128,16 @@ useEffect(() => {
     
     if (items.length === 0) {
       api.info({ message: 'Carrito vacío', description: 'Agrega autos primero.' });
+      return;
+    }
+
+    // VALIDACIÓN: Debe haber un vehículo seleccionado
+    if (!vehiculoSeleccionado) {
+      api.warning({ 
+        message: '⚠️ Selecciona un vehículo', 
+        description: 'Por favor selecciona el vehículo que deseas reservar marcando el checkbox.',
+        duration: 4
+      });
       return;
     }
     
@@ -118,10 +151,19 @@ useEffect(() => {
     setDiasRenta(0);
     setIsModalOpen(true);
   };
+
   const confirmarPagoYReserva = async () => {
     try {
         const values = await formPago.validateFields();
         const [inicio, fin] = values.fechas;
+        
+        if (!vehiculoSeleccionado) {
+          api.warning({ 
+            message: 'No hay vehículo seleccionado', 
+            description: 'Selecciona un vehículo antes de continuar.' 
+          });
+          return;
+        }
         
         const idUsuario = getUserId();
         setProcesandoPago(true);
@@ -133,156 +175,117 @@ useEffect(() => {
             duration: 0 
         });
 
-        let errores = [];
-        let exitosos = 0;
+        try {
+            const dias = fin.diff(inicio, 'day');
+            const diasReales = dias > 0 ? dias : 1;
+            const precioDia = vehiculoSeleccionado.PrecioPorDia || vehiculoSeleccionado.PrecioDia || 0;
+            const totalItem = precioDia * diasReales;
+            
+            const payloadReserva = {
+                IdUsuario: parseInt(idUsuario),
+                IdVehiculo: vehiculoSeleccionado.IdVehiculo,
+                FechaInicio: inicio.format('YYYY-MM-DDTHH:mm:ss'),
+                FechaFin: fin.format('YYYY-MM-DDTHH:mm:ss'),
+                Total: totalItem * 1.15,
+                Estado: "Confirmada"
+            };
 
-        for (const item of items) {
-            try {
-                const dias = fin.diff(inicio, 'day');
-                const diasReales = dias > 0 ? dias : 1;
-                const precioDia = item.PrecioPorDia || item.PrecioDia || 0;
-                const totalItem = precioDia * diasReales;
-                const payloadReserva = {
-                    IdUsuario: parseInt(idUsuario),
-                    IdVehiculo: item.IdVehiculo,
-                    FechaInicio: inicio.format('YYYY-MM-DDTHH:mm:ss'),
-                    FechaFin: fin.format('YYYY-MM-DDTHH:mm:ss'),
-                    Total: totalItem * 1.15,
+            const respuestaReserva = await dispatch(createReservaThunk(payloadReserva)).unwrap();
+            const idReservaCreada = respuestaReserva?.reserva?.IdReserva || 
+                                   respuestaReserva?.idReserva || 
+                                   respuestaReserva?.IdReserva;
+            
+            const totalCobrado = respuestaReserva?.reserva?.Total || (totalItem * 1.15);
 
-                    Estado: "Confirmada"
-                };
-                const respuestaReserva = await dispatch(createReservaThunk(payloadReserva)).unwrap();
-                const idReservaCreada = respuestaReserva?.reserva?.IdReserva || 
-                                       respuestaReserva?.idReserva || 
-                                       respuestaReserva?.IdReserva;
-                
-                const totalCobrado = respuestaReserva?.reserva?.Total || totalItem;
-
-                if (!idReservaCreada) {
-                    throw new Error('No se pudo obtener el ID de la reserva creada');
-                }
-                const payloadFactura = {
-                    IdReserva: idReservaCreada,
-                    ValorTotal: totalCobrado
-                };
-
-                await dispatch(createFacturaThunk(payloadFactura)).unwrap();
-
-                
-                let vehiculoCompleto;
-                try {
-                    vehiculoCompleto = await dispatch(fetchVehiculoById(item.IdVehiculo)).unwrap();
-                } catch (errorGet) {
-                    throw new Error('No se pudo obtener la información del vehículo');
-                }
-
-                const payloadVehiculo = {
-                    IdVehiculo: vehiculoCompleto.IdVehiculo || item.IdVehiculo,
-                    Marca: vehiculoCompleto.Marca,
-                    Modelo: vehiculoCompleto.Modelo,
-                    Anio: vehiculoCompleto.Anio || vehiculoCompleto.Año,
-                    IdCategoria: vehiculoCompleto.IdCategoria,
-                    IdTransmision: vehiculoCompleto.IdTransmision,
-                    Capacidad: vehiculoCompleto.Capacidad,
-                    PrecioDia: vehiculoCompleto.PrecioDia || vehiculoCompleto.PrecioPorDia,
-                    Estado: "Rentado", 
-                    Descripcion: vehiculoCompleto.Descripcion,
-                    IdSucursal: vehiculoCompleto.IdSucursal
-                };
-                await dispatch(updateVehiculoThunk({ id: item.IdVehiculo,body: payloadVehiculo })).unwrap();
-                await dispatch(deleteCarritoThunk(item.IdItem)).unwrap();     
-                exitosos++;
-            } catch (err) {      
-                let mensajeError = 'Error desconocido';               
-                if (err?.message) {
-                    mensajeError = err.message;
-                } 
-                else if (typeof err === 'string') {
-                    mensajeError = err;
-                }
-                else if (err?.error) {
-                    if (typeof err.error === 'string') {
-                        mensajeError = err.error;
-                    } else if (err.error?.message || err.error?.Message) {
-                        mensajeError = err.error.message || err.error.Message;
-                    }
-                }
-                else if (err?.response?.data) {
-                    if (typeof err.response.data === 'string') {
-                        mensajeError = err.response.data;
-                    } else {
-                        mensajeError = err.response.data.message || 
-                                      err.response.data.Message || 
-                                      'Error en el servidor';
-                    }
-                }
-                else if (err?.data) {
-                    if (typeof err.data === 'string') {
-                        mensajeError = err.data;
-                    } else {
-                        mensajeError = err.data.message || 
-                                      err.data.Message || 
-                                      'Error en el servidor';
-                    }
-                }
-                
-                const nombreVehiculo = item.VehiculoNombre || item.Nombre || 'Vehículo';
-                errores.push(`${nombreVehiculo}: ${mensajeError}`);
+            if (!idReservaCreada) {
+                throw new Error('No se pudo obtener el ID de la reserva creada');
             }
-        }
 
-        api.destroy('pago_process');
-        setProcesandoPago(false);
-        if (errores.length > 0 && exitosos === 0) {
-            api.error({
-                message: ' Error en el Pago',
-                description: (
-                    <div>
-                        <p><strong>No se pudo completar ninguna reserva:</strong></p>
-                        <ul style={{ paddingLeft: '20px', margin: '10px 0' }}>
-                            {errores.map((e, i) => (
-                                <li key={i} style={{ fontSize: '13px', color: '#ff4d4f', marginBottom: '5px' }}>
-                                    {e}
-                                </li>
-                            ))}
-                        </ul>
-                        <p style={{ fontSize: '12px', marginTop: '10px', color: '#666' }}>
-                            Por favor verifica tu saldo o la información bancaria.
-                        </p>
-                    </div>
-                ),
-                duration: 10
-            });
-        } else if (errores.length > 0 && exitosos > 0) {
-            api.warning({
-                message: '⚠️ Proceso Completado con Alertas',
-                description: (
-                    <div>
-                        <p> Se reservaron <strong>{exitosos}</strong> vehículo(s) correctamente.</p>
-                        <p style={{color: '#ff4d4f', fontWeight: 'bold', marginTop: '10px'}}>
-                             Fallaron {errores.length}:
-                        </p>
-                        <ul style={{ paddingLeft: '20px', margin: '5px 0' }}>
-                            {errores.map((e, i) => (
-                                <li key={i} style={{ fontSize: '12px', marginBottom: '3px' }}>
-                                    {e}
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                ),
-                duration: 10
-            });
-            setIsModalOpen(false);
-            setTimeout(() => navigate('/reservas'), 2000);
-        } else {
+            const payloadFactura = {
+                IdReserva: idReservaCreada,
+                ValorTotal: totalCobrado
+            };
+
+            await dispatch(createFacturaThunk(payloadFactura)).unwrap();
+
+            const vehiculoCompleto = await dispatch(fetchVehiculoById(vehiculoSeleccionado.IdVehiculo)).unwrap();
+
+            const payloadVehiculo = {
+                IdVehiculo: vehiculoCompleto.IdVehiculo || vehiculoSeleccionado.IdVehiculo,
+                Marca: vehiculoCompleto.Marca,
+                Modelo: vehiculoCompleto.Modelo,
+                Anio: vehiculoCompleto.Anio || vehiculoCompleto.Año,
+                IdCategoria: vehiculoCompleto.IdCategoria,
+                IdTransmision: vehiculoCompleto.IdTransmision,
+                Capacidad: vehiculoCompleto.Capacidad,
+                PrecioDia: vehiculoCompleto.PrecioDia || vehiculoCompleto.PrecioPorDia,
+                Estado: "Rentado", 
+                Descripcion: vehiculoCompleto.Descripcion,
+                IdSucursal: vehiculoCompleto.IdSucursal
+            };
+
+            await dispatch(updateVehiculoThunk({ 
+              id: vehiculoSeleccionado.IdVehiculo,
+              body: payloadVehiculo 
+            })).unwrap();
+
+            await dispatch(deleteCarritoThunk(vehiculoSeleccionado.IdItem)).unwrap();     
+
+            api.destroy('pago_process');
+            setProcesandoPago(false);
+
             api.success({ 
                 message: '🎉 ¡Pago y Reserva Exitosos!', 
-                description: `Se han generado ${exitosos} reserva(s) y factura(s). Los vehículos están rentados. Redirigiendo...`,
+                description: `El vehículo ha sido reservado. Se generó la factura. Redirigiendo...`,
                 duration: 5
             });
+
             setIsModalOpen(false);
+            setVehiculoSeleccionado(null);
             setTimeout(() => navigate('/reservas'), 2000);
+
+        } catch (err) {      
+            let mensajeError = 'Error desconocido';               
+            if (err?.message) {
+                mensajeError = err.message;
+            } 
+            else if (typeof err === 'string') {
+                mensajeError = err;
+            }
+            else if (err?.error) {
+                if (typeof err.error === 'string') {
+                    mensajeError = err.error;
+                } else if (err.error?.message || err.error?.Message) {
+                    mensajeError = err.error.message || err.error.Message;
+                }
+            }
+            else if (err?.response?.data) {
+                if (typeof err.response.data === 'string') {
+                    mensajeError = err.response.data;
+                } else {
+                    mensajeError = err.response.data.message || 
+                                  err.response.data.Message || 
+                                  'Error en el servidor';
+                }
+            }
+            else if (err?.data) {
+                if (typeof err.data === 'string') {
+                    mensajeError = err.data;
+                } else {
+                    mensajeError = err.data.message || 
+                                  err.data.Message || 
+                                  'Error en el servidor';
+                }
+            }
+
+            api.destroy('pago_process');
+            setProcesandoPago(false);
+
+            api.error({
+                message: '❌ Error en el Pago',
+                description: mensajeError,
+                duration: 8
+            });
         }
         
         cargarCarrito();
@@ -307,6 +310,8 @@ useEffect(() => {
         onEliminar={handleEliminar} 
         onReservar={abrirModalReserva}
         onVerDetalles={verDetalles}
+        vehiculoSeleccionado={vehiculoSeleccionado}
+        onSeleccionarVehiculo={handleSeleccionarVehiculo}
       />
 
       {/* --- MODAL DE DETALLES DEL VEHÍCULO --- */}
@@ -392,6 +397,8 @@ useEffect(() => {
           </div>
         )}
       </Modal>
+
+      {/* --- MODAL DE PAGO --- */}
       <Modal
         title={
           <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
@@ -401,33 +408,58 @@ useEffect(() => {
         open={isModalOpen}
         onOk={confirmarPagoYReserva}
         onCancel={() => !procesandoPago && setIsModalOpen(false)}
-        okText={procesandoPago ? "⏳ Procesando Transacción..." : `Pagar $${(totalCalculado*1.15).toFixed(2)}`}
+        okText={procesandoPago ? "⏳ Procesando Transacción..." : `💰 Pagar $${(totalCalculado*1.15).toFixed(2)}`}
         cancelText="Cancelar"
         confirmLoading={procesandoPago}
         closable={!procesandoPago}
         maskClosable={!procesandoPago}
         width={650}
         okButtonProps={{ 
-          disabled: !fechasSeleccionadas.length || !totalCalculado,
+          disabled: !fechasSeleccionadas.length || !totalCalculado || !vehiculoSeleccionado,
           size: 'large',
           style: { height: '45px', fontSize: '16px' }
         }}
         cancelButtonProps={{ size: 'large' }}
       >
         <Form form={formPago} layout="vertical">
+            
+            {/* INFORMACIÓN DEL VEHÍCULO SELECCIONADO */}
+            {vehiculoSeleccionado && (
+              <div style={{ 
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+                padding: '20px', 
+                borderRadius: '12px', 
+                marginBottom: '20px',
+                color: 'white'
+              }}>
+                <h4 style={{ margin: '0 0 10px 0', color: 'white', fontSize: '16px' }}>
+                  🚗 Vehículo Seleccionado
+                </h4>
+                <p style={{ margin: '5px 0', fontSize: '15px', fontWeight: 'bold' }}>
+                  {vehiculoSeleccionado.VehiculoNombre || vehiculoSeleccionado.Nombre}
+                </p>
+                <p style={{ margin: '5px 0', fontSize: '13px' }}>
+                  {vehiculoSeleccionado.Marca} {vehiculoSeleccionado.Modelo}
+                </p>
+                <p style={{ margin: '5px 0', fontSize: '14px' }}>
+                  <strong>Precio/día:</strong> ${parseFloat(vehiculoSeleccionado.PrecioPorDia || vehiculoSeleccionado.PrecioDia || 0).toFixed(2)}
+                </p>
+              </div>
+            )}
+
+            {/* SELECCIÓN DE FECHAS */}
             <div style={{ 
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+              background: '#f0f5ff', 
               padding: '20px', 
               borderRadius: '12px', 
-              marginBottom: '20px',
-              color: 'white'
+              marginBottom: '20px'
             }}>
-                <h4 style={{ margin: '0 0 15px 0', color: 'white', fontSize: '16px' }}>
-                  📅 1. Periodo de Renta
+                <h4 style={{ margin: '0 0 15px 0', fontSize: '16px' }}>
+                  📅 Periodo de Renta
                 </h4>
                 <Form.Item 
                     name="fechas" 
-                    label={<span style={{ color: 'white' }}>¿Cuándo usarás los vehículos?</span>}
+                    label="¿Cuándo usarás el vehículo?"
                     rules={[{ required: true, message: 'Selecciona las fechas de inicio y fin' }]}
                 >
                     <RangePicker 
@@ -440,54 +472,47 @@ useEffect(() => {
                 </Form.Item>
                 {diasRenta > 0 && (
                     <div style={{ 
-                      background: 'rgba(255,255,255,0.2)', 
+                      background: '#fff', 
                       padding: '10px 15px', 
                       borderRadius: '8px',
                       marginTop: '10px'
                     }}>
-                      <p style={{ margin: 0, fontWeight: 'bold', fontSize: '15px' }}>
+                      <p style={{ margin: 0, fontWeight: 'bold', fontSize: '15px', color: '#1890ff' }}>
                         ⏱️ Duración: {diasRenta} día{diasRenta !== 1 ? 's' : ''}
                       </p>
                     </div>
                 )}
             </div>
-{totalCalculado > 0 && (() => {
-  const subtotalSinIva = totalCalculado;
-  const ivaCalculado = subtotalSinIva * 0.15;
-  const totalConIva = subtotalSinIva + ivaCalculado;
-  
-  return (
-    <div>
-      {items.map((item, index) => {
-        const precioDia = item.PrecioPorDia || item.PrecioDia || 0;
-        const subtotalItem = precioDia * diasRenta;
-        return (
-          <div key={index}>
-            <span>{item.VehiculoNombre} × {diasRenta} días</span>
-            <span>${(subtotalItem * 1.15).toFixed(2)}</span>
 
-          </div>
-        );
-      })}
-      
-      <Divider />
-      <div>
-        <span>Subtotal (sin IVA):</span>
-        <span>${subtotalSinIva.toFixed(2)}</span>
-      </div>
-      <div style={{ color: '#fa8c16' }}>
-        <span>IVA (15%):</span>
-        <span>+${ivaCalculado.toFixed(2)}</span>
-      </div>
-      
-      <Divider />
-      <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
-        <span>TOTAL A PAGAR:</span>
-        <span style={{ color: '#52c41a' }}>${totalConIva.toFixed(2)}</span>
-      </div>
-    </div>
-  );
-})()}
+            {/* RESUMEN DE COSTOS */}
+            {totalCalculado > 0 && (() => {
+              const subtotalSinIva = totalCalculado;
+              const ivaCalculado = subtotalSinIva * 0.15;
+              const totalConIva = subtotalSinIva + ivaCalculado;
+              
+              return (
+                <div style={{ marginBottom: '20px', padding: '15px', background: '#f5f5f5', borderRadius: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span>Subtotal (sin IVA):</span>
+                    <span>${subtotalSinIva.toFixed(2)}</span>
+                  </div>
+                  
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#fa8c16' }}>
+                    <span>IVA (15%):</span>
+                    <span>+${ivaCalculado.toFixed(2)}</span>
+                  </div>
+                  
+                  <Divider style={{ margin: '12px 0' }} />
+                  
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '18px', fontWeight: 'bold' }}>
+                    <span>TOTAL A PAGAR:</span>
+                    <span style={{ color: '#52c41a' }}>${totalConIva.toFixed(2)}</span>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* DATOS BANCARIOS */}
             <div style={{ 
               background: '#f6ffed', 
               padding: '20px', 
@@ -495,7 +520,7 @@ useEffect(() => {
               border: '2px solid #b7eb8f' 
             }}>
                 <h4 style={{ marginTop: 0, color: '#52c41a', fontSize: '16px' }}>
-                  🏦 2. Información de Pago
+                  🏦 Información de Pago
                 </h4>
                 
                 <Row gutter={16}>
@@ -535,6 +560,28 @@ useEffect(() => {
                         </Form.Item>
                     </Col>
                 </Row>
+
+                <div style={{ 
+                  fontSize: '12px', 
+                  color: '#595959', 
+                  background: '#fff', 
+                  padding: '12px', 
+                  borderRadius: '8px',
+                  border: '1px solid #d9d9d9'
+                }}>
+                    <p style={{ margin: '4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ color: '#52c41a', fontSize: '16px' }}>✓</span>
+                      El sistema verificará saldo y disponibilidad automáticamente
+                    </p>
+                    <p style={{ margin: '4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ color: '#52c41a', fontSize: '16px' }}>✓</span>
+                      Se generará una factura electrónica automáticamente
+                    </p>
+                    <p style={{ margin: '4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ color: '#52c41a', fontSize: '16px' }}>✓</span>
+                      El vehículo quedará marcado como "Rentado"
+                    </p>
+                </div>
             </div>
 
         </Form>

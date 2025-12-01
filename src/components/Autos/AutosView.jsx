@@ -1,14 +1,8 @@
 // src/components/Autos/AutosView.jsx
 import React, { useState } from 'react';
-import { 
-  Card, Button, Modal, Form, Input, InputNumber, Select, Row, Col, 
-  Tag, message, Tooltip, Space, Empty 
-} from 'antd';
+import { Card, Button, Modal, Form, Input, InputNumber, Select, Row, Col, Tag, message, Tooltip, Space, Empty} from 'antd';
 import { isAdmin } from '../../services/auth';
-import { 
-  ExclamationCircleOutlined, EyeOutlined, EditOutlined, 
-  DeleteOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, ClearOutlined, ShoppingCartOutlined
-} from '@ant-design/icons';
+import { ExclamationCircleOutlined, EyeOutlined, EditOutlined, DeleteOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, ClearOutlined, ShoppingCartOutlined} from '@ant-design/icons';
 import './Autos.css';
 
 const { Option } = Select;
@@ -32,17 +26,11 @@ const AutosView = ({
   const [filterForm] = Form.useForm();
   
   const listaAutos = Array.isArray(autos) ? autos : [];
-
-  // ✅ NUEVA FUNCIÓN DIRECTA: Ya no abre modal, agrega directo
   const handleAddToCart = (auto) => {
-    // 1. Verificamos si está logueado (esto abre el modal de login si no lo está)
     if (checkAuth()) {
-      // 2. Agregamos directo al carrito (sin fechas)
       onAgregarCarrito(auto.IdVehiculo);
     }
   };
-
-  // --- FILTROS Y BÚSQUEDA ---
   const handleFilterSearch = async (values) => {
       const filtros = {};
       if (values.IdCategoria) filtros.categoria = values.IdCategoria; 
@@ -61,7 +49,6 @@ const AutosView = ({
     onRefresh(); 
   };
 
-  // --- MODAL CREAR / EDITAR ---
   const abrirModal = (auto = null) => {
       setAutoActual(auto);
       if (auto) {
@@ -338,16 +325,17 @@ const AutosView = ({
                     </div>
                   }
                   actions={[
+                    
+                    !userIsAdmin && (
                     <Tooltip title="Añadir a lista de deseos">
                       <Button 
                         type="text"
                         icon={<ShoppingCartOutlined style={{ fontSize: '18px', color: '#1890ff' }} />}
-                        // ✅ CAMBIO: LLamada directa a la nueva función handleAddToCart
                         onClick={() => handleAddToCart(auto)}
-                        disabled={auto.Estado !== 'Disponible'} 
-                      >        
-                      </Button>
-                    </Tooltip>,
+                        disabled={auto.Estado !== 'Disponible'}
+                      />
+                    </Tooltip>
+                  ),
                   userIsAdmin && (
                     <Tooltip title="Editar">
                       <Button 
