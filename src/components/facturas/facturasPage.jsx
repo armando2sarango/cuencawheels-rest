@@ -2,17 +2,10 @@ import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { message } from 'antd';
 import FacturasView from './facturasView';
-import { 
-  fetchfacturas, 
-  createFacturaThunk, 
-  updateFacturaThunk, 
-  deleteFacturaThunk 
-} from '../../store/facturas/thunks';
-
+import { fetchfacturas,createFacturaThunk,updateFacturaThunk, } from '../../store/facturas/thunks';
 const FacturasPage = () => {
   const dispatch = useDispatch();
   
-  // Asegúrate de que en tu store.js el reducer se llame 'facturas'
   const { facturas, loading, error } = useSelector(state => state.facturas);
 
   useEffect(() => {
@@ -47,23 +40,6 @@ const FacturasPage = () => {
       return false;
     }
   };
-
-  const handleEliminar = async (id) => {
-    try {
-      const result = await dispatch(deleteFacturaThunk(id)).unwrap();
-      if (result.success) {
-        message.success("Factura eliminada correctamente");
-      } else {
-        message.error("No se pudo eliminar la factura");
-      }
-      return true; // El slice actualiza el estado localmente, no es estrictamente necesario recargar
-    } catch (err) {
-      console.error(err);
-      message.error("Error al eliminar factura");
-      return false;
-    }
-  };
-
   return (
     <FacturasView
       facturas={facturas}
@@ -71,7 +47,6 @@ const FacturasPage = () => {
       error={error}
       onCrear={handleCrear}
       onEditar={handleEditar}
-      onEliminar={handleEliminar}
     />
   );
 };

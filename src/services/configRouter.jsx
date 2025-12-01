@@ -12,7 +12,6 @@ import Navbar from '../components/Navbar.jsx';
 import Footer from '../components/Footer.jsx';
 import CarritoPage from '../components/Carrito/carritoPage.jsx';
 import ReservasPage from '../components/reservas/ReservasPage.jsx'
-import PagosPage from '../components/Pagos/PagosPage.jsx';
 
 import { isAuthenticated } from '../services/auth.jsx'; 
 const MainLayout = ({ children }) => {
@@ -74,16 +73,6 @@ const ConfigRouter = () => {
             <ProtectedRoute>
               <MainLayout>
                 <UsuariosPage />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/pagos"
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <PagosPage />
               </MainLayout>
             </ProtectedRoute>
           }

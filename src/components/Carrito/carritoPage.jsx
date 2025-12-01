@@ -16,20 +16,15 @@ const CarritoPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { items = [], loading = false, error = null } = useSelector((state) => state.carritos || {}); 
-  
-  // --- Estados del Modal de Pago ---
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [procesandoPago, setProcesandoPago] = useState(false);
   const [fechasSeleccionadas, setFechasSeleccionadas] = useState([]);
   const [totalCalculado, setTotalCalculado] = useState(0);
   const [diasRenta, setDiasRenta] = useState(0);
-  
-  // --- Estados del Modal de Detalles ---
   const [detallesVisible, setDetallesVisible] = useState(false);
   const [vehiculoDetalle, setVehiculoDetalle] = useState(null);
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
   
-  // 🔒 Cuenta de la Empresa (Fija y no editable)
   const CUENTA_EMPRESA = "1756177158"; 
   
   const [formPago] = Form.useForm();
@@ -39,7 +34,6 @@ const CarritoPage = () => {
     cargarCarrito(); 
   }, []);
 
-  // 💰 Calcular el total cuando cambian las fechas
 useEffect(() => {
   if (
     fechasSeleccionadas &&
@@ -56,15 +50,13 @@ useEffect(() => {
       return acc + precioDia * diasReales;
     }, 0);
 
-    setTotalCalculado(totalSinIva); // ✔ solo subtotal
+    setTotalCalculado(totalSinIva); 
 
   } else {
     setDiasRenta(0);
     setTotalCalculado(0);
   }
 }, [fechasSeleccionadas, items]);
-
-
 
   const cargarCarrito = () => {
     const idCarritoStorage = getCarritoId();
@@ -82,8 +74,6 @@ useEffect(() => {
       api.error({ message: 'Error', description: 'No se pudo eliminar.' });
     }
   };
-
-  // 👁️ Ver Detalles del Vehículo
   const verDetalles = async (idVehiculo) => {
     setCargandoDetalle(true);
     setDetallesVisible(true);
@@ -106,8 +96,6 @@ useEffect(() => {
     setDetallesVisible(false);
     setVehiculoDetalle(null);
   };
-
-  // 1. Abrir Modal de Checkout
   const abrirModalReserva = () => {
     const idUsuario = getUserId();
     
@@ -131,8 +119,6 @@ useEffect(() => {
     setDiasRenta(0);
     setIsModalOpen(true);
   };
-
-  // 2. Lógica del Checkout (Pago -> Reserva -> Factura -> Actualizar Disponibilidad)
   const confirmarPagoYReserva = async () => {
     try {
         const values = await formPago.validateFields();
@@ -157,8 +143,6 @@ useEffect(() => {
                 const diasReales = dias > 0 ? dias : 1;
                 const precioDia = item.PrecioPorDia || item.PrecioDia || 0;
                 const totalItem = precioDia * diasReales;
-
-                // --- PASO 1: CREAR RESERVA ---
                 const payloadReserva = {
                     IdUsuario: parseInt(idUsuario),
                     IdVehiculo: item.IdVehiculo,
@@ -168,13 +152,7 @@ useEffect(() => {
 
                     Estado: "Confirmada"
                 };
-
-                console.log('📤 Enviando reserva:', payloadReserva);
-
                 const respuestaReserva = await dispatch(createReservaThunk(payloadReserva)).unwrap();
-                
-                console.log('✅ Respuesta reserva:', respuestaReserva);
-
                 const idReservaCreada = respuestaReserva?.reserva?.IdReserva || 
                                        respuestaReserva?.idReserva || 
                                        respuestaReserva?.IdReserva;
@@ -184,26 +162,18 @@ useEffect(() => {
                 if (!idReservaCreada) {
                     throw new Error('No se pudo obtener el ID de la reserva creada');
                 }
-
-                // --- PASO 2: GENERAR FACTURA ---
                 const payloadFactura = {
                     IdReserva: idReservaCreada,
                     ValorTotal: totalCobrado
                 };
 
-                console.log('📄 Generando factura:', payloadFactura);
-
                 await dispatch(createFacturaThunk(payloadFactura)).unwrap();
 
-                // --- PASO 3: ACTUALIZAR DISPONIBILIDAD DEL VEHÍCULO ---
-                console.log('🔍 Obteniendo datos completos del vehículo:', item.IdVehiculo);
                 
                 let vehiculoCompleto;
                 try {
                     vehiculoCompleto = await dispatch(fetchVehiculoById(item.IdVehiculo)).unwrap();
-                    console.log('✅ Datos del vehículo obtenidos:', vehiculoCompleto);
                 } catch (errorGet) {
-                    console.error('❌ Error al obtener vehículo:', errorGet);
                     throw new Error('No se pudo obtener la información del vehículo');
                 }
 
@@ -216,30 +186,15 @@ useEffect(() => {
                     IdTransmision: vehiculoCompleto.IdTransmision,
                     Capacidad: vehiculoCompleto.Capacidad,
                     PrecioDia: vehiculoCompleto.PrecioDia || vehiculoCompleto.PrecioPorDia,
-                    Estado: "Rentado", // 🔥 Cambiar a Rentado
+                    Estado: "Rentado", 
                     Descripcion: vehiculoCompleto.Descripcion,
                     IdSucursal: vehiculoCompleto.IdSucursal
                 };
-
-                console.log('🔄 Actualizando disponibilidad del vehículo:', payloadVehiculo);
-
-                await dispatch(updateVehiculoThunk({ 
-                    id: item.IdVehiculo, 
-                    body: payloadVehiculo 
-                })).unwrap();
-
-                console.log('✅ Vehículo marcado como Rentado');
-
-                // --- PASO 4: BORRAR DEL CARRITO ---
-                await dispatch(deleteCarritoThunk(item.IdItem)).unwrap();
-                
+                await dispatch(updateVehiculoThunk({ id: item.IdVehiculo,body: payloadVehiculo })).unwrap();
+                await dispatch(deleteCarritoThunk(item.IdItem)).unwrap();     
                 exitosos++;
-
-            } catch (err) {
-                console.error('❌ Error procesando item:', err);
-                
-                let mensajeError = 'Error desconocido';
-                
+            } catch (err) {      
+                let mensajeError = 'Error desconocido';               
                 if (err?.message) {
                     mensajeError = err.message;
                 } 
@@ -279,11 +234,9 @@ useEffect(() => {
 
         api.destroy('pago_process');
         setProcesandoPago(false);
-
-        // C. Resumen Final
         if (errores.length > 0 && exitosos === 0) {
             api.error({
-                message: '❌ Error en el Pago',
+                message: ' Error en el Pago',
                 description: (
                     <div>
                         <p><strong>No se pudo completar ninguna reserva:</strong></p>
@@ -306,9 +259,9 @@ useEffect(() => {
                 message: '⚠️ Proceso Completado con Alertas',
                 description: (
                     <div>
-                        <p>✅ Se reservaron <strong>{exitosos}</strong> vehículo(s) correctamente.</p>
+                        <p> Se reservaron <strong>{exitosos}</strong> vehículo(s) correctamente.</p>
                         <p style={{color: '#ff4d4f', fontWeight: 'bold', marginTop: '10px'}}>
-                            ❌ Fallaron {errores.length}:
+                             Fallaron {errores.length}:
                         </p>
                         <ul style={{ paddingLeft: '20px', margin: '5px 0' }}>
                             {errores.map((e, i) => (
@@ -336,7 +289,6 @@ useEffect(() => {
         cargarCarrito();
 
     } catch (err) {
-        console.error("❌ Validación fallida:", err);
         api.error({
             message: 'Formulario incompleto',
             description: 'Por favor completa todos los campos requeridos.'
