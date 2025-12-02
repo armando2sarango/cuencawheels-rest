@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
+import { SpeedInsights } from "@vercel/speed-insights/react"
 import ConfigRouter from './services/configRouter';
 import { useActivityTimeout } from './services/auth';
 import Loader from './components/Loader/loader';
@@ -33,6 +34,7 @@ return (
         />
       )}
       <ConfigRouter />
+      <SpeedInsights />
     </>
   );
 }
