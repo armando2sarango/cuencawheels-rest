@@ -166,7 +166,7 @@ const HomeView = () => {
         </Col>
       </Row>
 
-      {/* 🤝 Valores con Diseño de Grid */}
+
       <Card
         title={<Title level={2} className="section-title" style={{ textAlign: 'center' }}>Nuestros Valores</Title>}
         className="valores-container elegant-shadow section-spacing"
@@ -182,7 +182,7 @@ const HomeView = () => {
         </Row>
       </Card>
 
-      {/* ⚙️ Servicios con Iconos Atractivos */}
+
       <Divider orientation="center" className="divider-elegant">
         <Title level={2} className="section-title">Nuestros Servicios Destacados 🛠️</Title>
       </Divider>
