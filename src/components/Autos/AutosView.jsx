@@ -1,19 +1,18 @@
 // src/components/Autos/AutosView.jsx
 import React, { useState } from 'react';
-import { Card, Button, Modal, Form, Input, InputNumber, Select, Row, Col, Tag, message, Tooltip, Space, Empty} from 'antd';
+import { Card, Button, Modal, Form, Input, InputNumber, Select, Row, Col, Tag, message, Tooltip, Space, Empty,Typography} from 'antd';
 import { isAdmin } from '../../services/auth';
 import { ExclamationCircleOutlined, EyeOutlined, EditOutlined, DeleteOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, ClearOutlined, ShoppingCartOutlined} from '@ant-design/icons';
 import './Autos.css';
 
 const { Option } = Select;
 const { TextArea } = Input;
-
+const { Text } = Typography;
 const AutosView = ({ 
   autos = [], loading, error, onEditar, onEliminar, onCrear, onBuscar, onRefresh, onAgregarCarrito, checkAuth
 }) => {
   const userIsAdmin = isAdmin(); 
   
-  // Estados para CRUD de Autos
   const [modalVisible, setModalVisible] = useState(false);
   const [modalEliminarVisible, setModalEliminarVisible] = useState(false);
   const [detallesVisible, setDetallesVisible] = useState(false);
@@ -162,8 +161,6 @@ const AutosView = ({
       setModalEliminarVisible(false);
       setAutoAEliminar(null);
     };
-
-    // --- MODAL DETALLES ---
     const verDetalles = (auto) => {
       setAutoActual(auto);
       setDetallesVisible(true);
@@ -173,9 +170,6 @@ const AutosView = ({
       setDetallesVisible(false);
       setAutoActual(null);
     };
-
-
-  // ============= RENDER =============
   if (loading) {
     return (
       <div className="loading" style={{ textAlign: 'center', padding: '50px' }}>
@@ -363,32 +357,50 @@ const AutosView = ({
                     </Tooltip>
                   ].filter(Boolean)}
                   >
-                  <Card.Meta
-                    title={`${auto.Marca} ${auto.Modelo}`}
-                    description={
-                      <div>
-                        <p style={{ margin: '4px 0' }}>
-                          <strong>Año:</strong> {auto.Anio}
-                        </p>
-                        <p style={{ margin: '4px 0', fontSize: '18px', color: '#52c41a' }}>
-                          <strong>${parseFloat(auto.PrecioDia || 0).toFixed(2)}</strong> / día
-                        </p>
-                        {auto.TransmisionNombre && (
-                          <Tag style={{ marginTop: '8px' }}>{auto.TransmisionNombre}</Tag>
-                        )}
-                        {auto.Capacidad && (
-                          <Tag>{auto.Capacidad} pasajeros</Tag>
-                        )}
-                      </div>
-                    }
-                  />
+                    <Card.Meta
+  title={`${auto.Marca} ${auto.Modelo}`}
+  description={
+    <div>
+      <p style={{ margin: '4px 0' }}>
+        <strong>Año:</strong> {auto.Anio}
+      </p> 
+      {auto.EnPromocion ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', margin: '4px 0' }}>
+             <Text delete type="secondary" style={{ fontSize: '13px' }}>
+                Antes: ${parseFloat(auto.PrecioDia).toFixed(2)}
+             </Text>
+             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                 <strong style={{ fontSize: '18px', color: '#ff4d4f' }}>
+                    ${parseFloat(auto.PrecioFinal).toFixed(2)} / día
+                 </strong>
+                 <Tag color="red" style={{ borderRadius: '10px' }}>
+                    -{auto.PorcentajeDescuento}% OFF
+                 </Tag>
+             </div>
+             <span style={{ fontSize: '11px', color: '#ff4d4f' }}>
+                🔥 {auto.NombrePromocion}
+             </span>
+        </div>
+      ) : (
+        <p style={{ margin: '4px 0', fontSize: '18px', color: '#52c41a' }}>
+          <strong>${parseFloat(auto.PrecioDia || 0).toFixed(2)}</strong> / día
+        </p>
+      )}
+      {auto.TransmisionNombre && (
+        <Tag style={{ marginTop: '8px' }}>{auto.TransmisionNombre}</Tag>
+      )}
+      {auto.Capacidad && (
+        <Tag>{auto.Capacidad} pasajeros</Tag>
+      )}
+    </div>
+  }
+/>
                 </Card>
               </Col>
             ))}
           </Row>
         )}
 
-      {/* MODAL CREAR/EDITAR */}
       <Modal
         title={autoActual ? `Editar ${autoActual.Marca} ${autoActual.Modelo}` : 'Crear Nuevo Vehículo'}
         open={modalVisible}
@@ -503,8 +515,6 @@ const AutosView = ({
           </Form.Item>
         </Form>
       </Modal>
-
-      {/* MODAL ELIMINAR */}
       <Modal
         title="Confirmar Eliminación"
         open={modalEliminarVisible}
@@ -534,8 +544,6 @@ const AutosView = ({
           </div>
         </div>
       </Modal>
-
-      {/* MODAL DETALLES */}
       <Modal
         title={`Detalles - ${autoActual?.Marca || ''} ${autoActual?.Modelo || ''}`}
         open={detallesVisible}

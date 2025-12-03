@@ -1,5 +1,5 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
-import * as pagoAPI from '../../api/pagos/restCalls'; // Ajusta la ruta si es necesario
+import * as pagoAPI from './restCalls'; 
 
 export const fetchPagos = createAsyncThunk(
   'pagos/fetchAll',
@@ -22,8 +22,6 @@ export const fetchPagoById = createAsyncThunk(
     }
   }
 );
-
-// ✅ NUEVO: Traer pagos de un usuario específico
 export const fetchPagosByUsuario = createAsyncThunk(
   'pagos/fetchByUsuario',
   async (idUsuario, { rejectWithValue }) => {
@@ -52,7 +50,6 @@ export const createPagoThunk = createAsyncThunk(
     try {
       return await pagoAPI.createPago(body);
     } catch (error) {
-      // Esto asegura que el mensaje "Sin fondos" llegue al componente
       return rejectWithValue(error.message);
     }
   }
