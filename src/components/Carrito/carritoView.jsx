@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   Table, Card, Button, Typography, Space, Image, Empty, Row, Col, Tag, Tooltip, Checkbox, Alert
 } from 'antd';
-import { DeleteOutlined, ShoppingCartOutlined, CreditCardOutlined, EyeOutlined } from '@ant-design/icons';
+import { DeleteOutlined, ShoppingCartOutlined, CalendarOutlined, EyeOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 
@@ -20,7 +20,7 @@ const CarritoView = ({
     {
       title: 'Seleccionar',
       key: 'seleccionar',
-      width: 80,
+      width: 60,
       align: 'center',
       render: (_, record) => (
         <Checkbox 
@@ -53,12 +53,17 @@ const CarritoView = ({
       render: (_, record) => (
         <Space direction="vertical" size={0}>
           <Text strong style={{ fontSize: '16px' }}>
-            {record.VehiculoNombre || record.Nombre || 'Vehículo sin nombre'}
+            {record.VehiculoNombre || record.Nombre || 'Vehículo'}
           </Text>
           <Text type="secondary">
-            {record.Marca && record.Modelo ? `${record.Marca} ${record.Modelo}` : record.Marca || record.Modelo || 'Sin información'}
+            {record.Marca} {record.Modelo}
           </Text>
           {record.CategoriaNombre && <Tag color="blue">{record.CategoriaNombre}</Tag>}
+          {record.EnPromocion && (
+              <Tag color="red" style={{marginTop: 4, fontWeight: 'bold'}}>
+                 -{record.PorcentajeDescuento}% OFF
+              </Tag>
+          )}
         </Space>
       ),
     },
@@ -67,14 +72,22 @@ const CarritoView = ({
       key: 'precio',
       align: 'right',
       render: (_, record) => {
-        const precio = record.PrecioPorDia || record.PrecioDia || 0;
+        const precioOriginal = record.PrecioDia || 0;
+        const precioFinal = record.PrecioFinal || precioOriginal; 
+
         return (
             <div style={{ textAlign: 'right' }}>
                 <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '4px' }}>
                   Precio por día
                 </Text>
-                <Text strong style={{ color: '#52c41a', fontSize: '18px' }}>
-                    ${parseFloat(precio).toFixed(2)}
+                
+                {record.EnPromocion && record.PrecioFinal !== record.PrecioDia ? (
+                    <Text delete type="secondary" style={{ fontSize: '12px', marginRight: 6 }}>
+                        ${parseFloat(precioOriginal).toFixed(2)}
+                    </Text>
+                ) : null}
+                <Text strong style={{ color: record.EnPromocion ? '#ff4d4f' : '#52c41a', fontSize: '18px' }}>
+                    ${parseFloat(precioFinal).toFixed(2)}
                 </Text>
             </div>
         );
@@ -84,6 +97,7 @@ const CarritoView = ({
       title: '',
       key: 'acciones',
       width: 120,
+      align: 'center',
       render: (_, record) => (
         <Space>
           <Tooltip title="Ver detalles">
@@ -105,221 +119,78 @@ const CarritoView = ({
   ];
 
   if (loading && items.length === 0) {
-    return (
-      <div style={{ 
-        padding: '100px 50px', 
-        textAlign: 'center',
-        minHeight: '400px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>
-        <div>
-          <div className="spinner" style={{
-            border: '4px solid #f3f3f3',
-            borderTop: '4px solid #1890ff',
-            borderRadius: '50%',
-            width: '50px',
-            height: '50px',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto 20px'
-          }}></div>
-          <Text type="secondary" style={{ fontSize: '16px' }}>Cargando tu carrito...</Text>
-        </div>
-      </div>
-    );
+    return <div style={{ padding: '100px', textAlign: 'center' }}><p>Cargando...</p></div>;
   }
 
   return (
     <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
       <Title level={2} style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <ShoppingCartOutlined style={{ color: '#1890ff' }} /> 
-        Mi Carrito
+        <ShoppingCartOutlined style={{ color: '#1890ff' }} /> Mi Carrito
       </Title>
       
       <Row gutter={24}>
         <Col xs={24} lg={16}>
           {items.length === 0 ? (
-            <Empty 
-                description={
-                  <span>
-                    <p style={{ fontSize: '16px', marginBottom: '8px' }}>
-                      No tienes vehículos seleccionados
-                    </p>
-                    <Text type="secondary">Explora nuestro catálogo y agrega tus favoritos</Text>
-                  </span>
-                }
-                image={Empty.PRESENTED_IMAGE_SIMPLE} 
-                style={{ 
-                  background: '#fff', 
-                  padding: '80px 40px', 
-                  borderRadius: '12px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)' 
-                }}
-            >
-                <Button 
-                  type="primary" 
-                  href="/autos" 
-                  size="large"
-                  icon={<ShoppingCartOutlined />}
-                  style={{ marginTop: '20px', height: '45px', fontSize: '16px' }}
-                >
-                  Ir al Catálogo
-                </Button>
+            <Empty description="Tu carrito está vacío" style={{ background: '#fff', padding: '60px', borderRadius: '12px' }}>
+                <Button type="primary" href="/autos">Ir al Catálogo</Button>
             </Empty>
           ) : (
             <>
-              {/* ALERTA: Selecciona un vehículo */}
-              {items.length > 1 && !vehiculoSeleccionado && (
+               {vehiculoSeleccionado ? (
                 <Alert
-                  message="⚠️ Importante"
-                  description="Por política de la empresa, solo puedes reservar UN vehículo a la vez. Por favor selecciona el vehículo que deseas reservar marcando el checkbox."
-                  type="warning"
+                  message="Vehículo Seleccionado"
+                  description={`Has seleccionado: ${vehiculoSeleccionado.VehiculoNombre}.`}
+                  type="success"
+                  showIcon
+                  style={{ marginBottom: '16px' }}
+                />
+              ) : (
+                <Alert
+                  message="Importante"
+                  description="Selecciona un vehículo de la lista para generar la reserva."
+                  type="info"
                   showIcon
                   style={{ marginBottom: '16px' }}
                 />
               )}
               
-              {/* ALERTA: Vehículo seleccionado */}
-              {vehiculoSeleccionado && (
-                <Alert
-                  message="✓ Vehículo Seleccionado"
-                  description={`Has seleccionado: ${vehiculoSeleccionado.VehiculoNombre || vehiculoSeleccionado.Nombre}. Puedes proceder al pago.`}
-                  type="success"
-                  showIcon
-                  style={{ marginBottom: '16px' }}
-                />
-              )}
-
               <Table 
                 dataSource={items} 
                 columns={columns} 
-                rowKey={(record) => record.IdItem || record.IdVehiculo || Math.random()} 
+                rowKey={(record) => record.IdItem || Math.random()} 
                 pagination={false}
-                style={{ 
-                  background: '#fff', 
-                  borderRadius: '12px', 
-                  overflow: 'hidden', 
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)' 
-                }}
-                rowClassName={(record) => 
-                  vehiculoSeleccionado?.IdItem === record.IdItem ? 'row-selected' : ''
-                }
+                style={{ background: '#fff', borderRadius: '12px', overflow: 'hidden' }}
+                rowClassName={(record) => vehiculoSeleccionado?.IdItem === record.IdItem ? 'row-selected' : ''}
               />
             </>
           )}
         </Col>
 
         <Col xs={24} lg={8}>
-          <Card 
-            title={
-              <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
-                📋 Resumen de Reserva
-              </div>
-            }
-            style={{ 
-              position: 'sticky', 
-              top: 20, 
-              boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-              borderRadius: '12px',
-              overflow: 'hidden'
-            }}
-          >
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                marginBottom: '16px',
-                padding: '12px',
-                background: '#f0f5ff',
-                borderRadius: '8px'
-              }}>
-                <Text style={{ fontSize: '15px' }}>Vehículos en carrito:</Text>
-                <Text strong style={{ fontSize: '18px', color: '#1890ff' }}>
-                  {items.length}
-                </Text>
-              </div>
-
-              {/* Mostrar vehículo seleccionado */}
-              {vehiculoSeleccionado ? (
-                <div style={{ 
-                  background: '#f6ffed', 
-                  padding: '12px', 
-                  borderRadius: '8px',
-                  border: '2px solid #b7eb8f',
-                  marginBottom: '16px'
-                }}>
-                  <Text strong style={{ color: '#52c41a', display: 'block', marginBottom: '8px' }}>
-                    ✓ Seleccionado para pago:
-                  </Text>
-                  <Text style={{ fontSize: '14px' }}>
-                    {vehiculoSeleccionado.VehiculoNombre || vehiculoSeleccionado.Nombre}
-                  </Text>
-                </div>
-              ) : (
-                <div style={{ 
-                  background: '#fff7e6', 
-                  padding: '12px', 
-                  borderRadius: '8px',
-                  border: '1px solid #ffd591',
-                  marginBottom: '16px'
-                }}>
-                  <Text type="secondary" style={{ fontSize: '13px' }}>
-                    💡 <strong>Nota:</strong> Selecciona un vehículo marcando el checkbox para continuar.
-                  </Text>
-                </div>
-              )}
+          <Card title="Acciones" style={{ position: 'sticky', top: 20 }}>
+            <div style={{ marginBottom: 20 }}>
+               <Text>Vehículos en lista: <strong style={{ color: '#1890ff' }}>{items.length}</strong></Text>
             </div>
             
             <Button 
               type="primary" 
               size="large" 
               block 
-              icon={<CreditCardOutlined />} 
+              icon={<CalendarOutlined />} 
               disabled={items.length === 0 || !vehiculoSeleccionado}
               onClick={onReservar} 
-              style={{ 
-                height: '50px', 
-                fontSize: '16px', 
-                fontWeight: 'bold',
-                background: (items.length === 0 || !vehiculoSeleccionado) ? undefined : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                borderColor: (items.length === 0 || !vehiculoSeleccionado) ? undefined : 'transparent',
-                boxShadow: (items.length === 0 || !vehiculoSeleccionado) ? undefined : '0 4px 15px rgba(102, 126, 234, 0.4)'
-              }}
+              style={{ height: '50px', fontSize: '16px', fontWeight: 'bold' }}
             >
-              {items.length === 0 ? 'Carrito Vacío' : !vehiculoSeleccionado ? 'Selecciona un vehículo' : 'Proceder al Pago'}
+              Generar Reserva
             </Button>
             
-            <Button 
-              type="link" 
-              block 
-              href="/autos" 
-              style={{ 
-                marginTop: 12, 
-                fontSize: '14px',
-                height: '40px' 
-              }}
-            >
-              ➕ Agregar más vehículos
+            <Button type="link" block href="/autos" style={{ marginTop: 12 }}>
+              Seguir buscando
             </Button>
           </Card>
         </Col>
       </Row>
-
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        
-        .row-selected {
-          background-color: #e6f7ff !important;
-        }
-        
-        .row-selected:hover {
-          background-color: #bae7ff !important;
-        }
-      `}</style>
+      <style>{`.row-selected { background-color: #f6ffed !important; }`}</style>
     </div>
   );
 };
