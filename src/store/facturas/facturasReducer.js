@@ -1,9 +1,9 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { 
     fetchFacturas,
-    fetchFacturasByUsuarioThunk, // ⬅️ Nuevo Thunk manejado
-    getFacturaForHTMLThunk,     // ⬅️ Nuevo Thunk manejado (loading/error)
-    fetchFacturaById,           // (Se puede manejar si es necesario)
+    fetchFacturasByUsuarioThunk, 
+    getFacturaForHTMLThunk,    
+    fetchFacturaById,           
     createFacturaThunk,
     updateFacturaThunk,
     deleteFacturaThunk 

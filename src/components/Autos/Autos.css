@@ -2,6 +2,8 @@
   padding: 24px;
   min-height: 100vh;
   background: #f0f2f5;
+  /* Asegura que el padding no cause desbordamiento en móviles */
+  overflow-x: hidden; 
 }
 
 .autos-header {
@@ -21,6 +23,20 @@
   font-weight: 600;
 }
 
+/* Estilos para la tarjeta de filtros */
+.filter-card .ant-form-inline {
+    display: flex;
+    flex-wrap: wrap; 
+    gap: 10px;
+}
+
+/* Permitir que los items de filtro crezcan, pero manteniendo un mínimo en escritorio */
+.filter-card .ant-form-item {
+    flex-grow: 1; 
+    min-width: 150px;
+}
+
+
 .loading, .error {
   text-align: center;
   padding: 50px;
@@ -28,13 +44,14 @@
 }
 
 .error {
-  color: #ff4d4f;
+color: #ff4d4f;
 }
 
 .ant-card-cover {
   position: relative;
 }
 
+/* Contenedor de imagen en la tarjeta */
 .card-image-container {
   position: relative;
   height: 200px;
@@ -77,16 +94,16 @@
 
 .auto-price {
   margin: 8px 0;
-  font-size: 20px;
-  color: #52c41a;
-  font-weight: bold;
+font-size: 20px;
+color: #52c41a;
+font-weight: bold;
 }
 
 .auto-features {
   margin-top: 12px;
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+gap: 8px;
+flex-wrap: wrap;
 }
 
 .empty-state {
@@ -100,8 +117,9 @@
   font-size: 18px;
   color: #999;
   margin-bottom: 20px;
-}
 
+
+/* Contenedores de imagen y detalles en el Modal */
 .detalle-imagen-container {
   text-align: center;
   margin-bottom: 20px;
@@ -109,7 +127,7 @@
 
 .detalle-imagen {
   max-width: 100%;
-  max-height: 300px;
+  max-height: 300px; /* Altura máxima en escritorio */
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
@@ -125,15 +143,56 @@
   margin: 8px 0;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .autos-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 16px;
-  }
+/* === RESPONSIVE STYLES === */
 
-  .autos-header h2 {
-    font-size: 20px;
-  }
+/* Móvil y Tablet (Max 768px) */
+@media (max-width: 768px) {
+    
+    .autos-container {
+        padding: 12px; /* Reducir padding en móvil */
+    }
+
+    /* 1. Encabezado (Header) y botones */
+    .autos-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+        padding: 12px;
+    }
+
+    .autos-header h2 {
+        font-size: 20px;
+    }
+
+    /* Asegurar que el grupo de botones también se adapte */
+    .autos-header .ant-space {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+    }
+    
+    /* Hacer que los botones en el encabezado ocupen casi la mitad */
+    .autos-header .ant-space button {
+        flex-grow: 1;
+        min-width: 48%; 
+    }
+
+    /* 2. Filtros: Ocupan el 100% de la línea en móvil */
+    .filter-card .ant-form-item {
+        width: 100%; 
+        min-width: unset;
+    }
+    
+    /* 3. Detalles del Modal: Imagen más pequeña en móvil */
+    .detalle-imagen {
+        max-height: 200px; 
+    }
+}
+
+/* Pantallas Grandes (Min 1200px) */
+@media (min-width: 1200px) {
+    .autos-container {
+        padding: 32px 50px; 
+    }
+}
 }
