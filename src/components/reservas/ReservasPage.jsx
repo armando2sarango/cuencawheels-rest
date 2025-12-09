@@ -112,7 +112,6 @@ const ReservasPage = () => {
     }
   };
 
-  // ... (Tus otras funciones: handleEliminar, handleVerFacturas, handleCambiarEstado, handleCrearReserva se mantienen igual)
   const handleEliminar = async (id) => {
     try { await dispatch(deleteReservaThunk(id)).unwrap(); message.success("Cancelada"); cargarDatos(); } 
     catch { message.error("Error al cancelar"); }
@@ -127,8 +126,6 @@ const ReservasPage = () => {
       setListaFacturas(todos.filter(f => f.IdReserva === idReserva));
     } catch { setListaFacturas([]); }
   };
-  
-  // Función para crear reserva desde el Admin (sin pago inmediato)
   const handleCrearReservaAdmin = async (dto) => {
       try {
           await dispatch(createReservaThunk(dto)).unwrap();
