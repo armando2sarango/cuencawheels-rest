@@ -1,7 +1,5 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-
-// --- IMPORTAMOS LAS PÁGINAS ---
 import UsuariosPage from '../components/Usuarios/UsuriosPage'; // Ojo con el typo en tu nombre de archivo original
 import AutosPage from '../components/Autos/AutosPage';
 import LoginPage from '../components/Login/LoginPage';
