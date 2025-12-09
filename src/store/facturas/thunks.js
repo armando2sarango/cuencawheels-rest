@@ -3,7 +3,7 @@ import { createAsyncThunk } from '@reduxjs/toolkit';
 import * as FacturaAPI from './restCalls';
 
 // Obtener todos los vehículos
-export const fetchfacturas = createAsyncThunk(
+export const fetchFacturas = createAsyncThunk(
   'facturas/fetchAll',
   async () => {
     const data = await FacturaAPI.getfacturas();
