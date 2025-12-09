@@ -21,6 +21,21 @@ export const fetchFacturasByUsuarioThunk = createAsyncThunk(
     }
   }
 );
+
+export const getFacturaForHTMLThunk = createAsyncThunk(
+  'facturas/fetchHtml', 
+  async (idFactura, { rejectWithValue }) => {
+    try {
+      const data = await FacturaAPI.getFacturaForHTML(idFactura); 
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Error al cargar la factura');
+    }
+  }
+);
+
+
+
 // Obtener vehículo por ID
 export const fetchFacturaById = createAsyncThunk(
   'facturas/fetchById',

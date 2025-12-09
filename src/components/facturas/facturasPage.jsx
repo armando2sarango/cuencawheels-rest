@@ -1,11 +1,12 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { notification } from 'antd';
+import { notification } from 'antd'; // 💡 Ya no se importa Modal aquí
 import FacturasView from './facturasView';
 import { 
-  fetchfacturas, 
+  fetchFacturas, 
   createFacturaThunk, 
-  updateFacturaThunk 
+  updateFacturaThunk,
+  deleteFacturaThunk 
 } from '../../store/facturas/thunks';
 import { fetchUsuarios } from '../../store/usuarios/thunks';
 import { fetchReservas } from '../../store/reservas/thunks';
@@ -14,6 +15,7 @@ import { isAdmin } from '../../services/auth';
 const FacturasPage = () => {
   const dispatch = useDispatch();
   const [api, contextHolder] = notification.useNotification();
+  // ❌ Se eliminó const [modal, modalContextHolder] = Modal.useModal();
   
   const { facturas, loading } = useSelector(state => state.facturas);
   const { items: usuarios } = useSelector(state => state.usuarios || { items: [] });
@@ -22,16 +24,25 @@ const FacturasPage = () => {
   const esAdmin = isAdmin();
 
   useEffect(() => {
-    dispatch(fetchfacturas());
+    dispatch(fetchFacturas());
     if (esAdmin) {
-      dispatch(fetchUsuarios()); // Cargar usuarios para el select
-      dispatch(fetchReservas());  // Cargar reservas para el select
+      dispatch(fetchUsuarios());
+      dispatch(fetchReservas());
     }
   }, [dispatch, esAdmin]);
 
+  // ✅ Función helper para extraer mensajes de error
+  const getErrorMessage = (error) => {
+    let msg = 'Error desconocido.';
+    if (typeof error === 'string') msg = error;
+    else if (error?.message) msg = error.message;
+    if (error?.data?.Message) msg = error.data.Message;
+    if (error?.ExceptionMessage) msg = error.ExceptionMessage;
+    return msg;
+  };
+
   const handleCrear = async (factura) => {
     try {
-      // Crear el payload con la estructura que espera el backend
       const payload = {
         IdReserva: factura.IdReserva,
         ValorTotal: factura.ValorTotal
@@ -40,16 +51,42 @@ const FacturasPage = () => {
       await dispatch(createFacturaThunk(payload)).unwrap();
       
       api.success({ 
-        message: '✅ Factura creada', 
+        message: 'Factura Creada', 
+        description: 'La factura se ha creado exitosamente.',
+        placement: 'topRight',
+        duration: 3,
       });
       
-      dispatch(fetchfacturas());
+      dispatch(fetchFacturas());
       return true;
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
       api.error({ 
-        message: ' Error al crear', 
-        description: err.message || 'No se pudo crear la factura' 
+        message: 'Error al Crear Factura', 
+        description: getErrorMessage(error),
+        placement: 'topRight',
+        duration: 4,
+      });
+      return false;
+    }
+  };
+
+  const handleEliminar = async (idFactura) => {
+    try {
+      await dispatch(deleteFacturaThunk(idFactura)).unwrap();
+      
+      api.success({ 
+        message: 'Factura Eliminada', 
+        description: `La factura #${idFactura} se ha eliminado exitosamente.`,
+        placement: 'topRight',
+        duration: 3,
+      });
+      return true;
+    } catch (error) {
+      api.error({ 
+        message: 'Error al Eliminar Factura', 
+        description: getErrorMessage(error),
+        placement: 'topRight',
+        duration: 4,
       });
       return false;
     }
@@ -58,22 +95,25 @@ const FacturasPage = () => {
   const handleEditar = async (factura) => {
     try {
       await dispatch(updateFacturaThunk({
-        idFactura: factura.IdFactura,
+        id: factura.IdFactura,
         body: factura
       })).unwrap();
-      
+
       api.success({ 
-        message: '✅ Factura actualizada', 
-        description: 'Los cambios se guardaron correctamente' 
+        message: 'Factura Actualizada',
+        description: 'Los cambios se han guardado correctamente.',
+        placement: 'topRight',
+        duration: 3,
       });
-      
-      dispatch(fetchfacturas());
+
+      dispatch(fetchFacturas());
       return true;
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
       api.error({ 
-        message: '❌ Error al actualizar', 
-        description: err.message || 'No se pudo actualizar la factura' 
+        message: 'Error al Actualizar Factura', 
+        description: getErrorMessage(error),
+        placement: 'topRight',
+        duration: 4,
       });
       return false;
     }
@@ -82,6 +122,7 @@ const FacturasPage = () => {
   return (
     <>
       {contextHolder}
+      {/* ❌ Se eliminó {modalContextHolder} */}
       <FacturasView
         facturas={facturas}
         loading={loading}
@@ -90,7 +131,9 @@ const FacturasPage = () => {
         esAdmin={esAdmin}
         onCrear={handleCrear}
         onEditar={handleEditar}
-        api={api} 
+        api={api}
+        onEliminar={handleEliminar}
+        // ❌ Se eliminó modalApi={modal}
       />
     </>
   );
