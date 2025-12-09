@@ -9,7 +9,6 @@
   padding: 20px;
 }
 
-/* Tarjetas */
 .auth-card,
 .login-card,
 .register-card {
@@ -30,12 +29,10 @@
   box-shadow: 0 15px 50px rgba(0, 0, 0, 0.2);
 }
 
-/* Tarjeta de registro más ancha */
 .register-card {
   max-width: 600px;
 }
 
-/* Encabezados */
 .auth-header,
 .login-header,
 .register-header {

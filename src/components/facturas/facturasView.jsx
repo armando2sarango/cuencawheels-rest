@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Table, Button, Modal, Form, InputNumber, Select } from 'antd';
-import { FilePdfOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, InputNumber, Select,Space } from 'antd'; 
+import { FilePdfOutlined,ExclamationCircleOutlined,DeleteOutlined,FileTextOutlined} from '@ant-design/icons';
 import moment from 'moment';
 
 const { Option } = Select;
@@ -13,11 +13,17 @@ const FacturasView = ({
   esAdmin, 
   onCrear, 
   onEditar, 
-  api 
+  api ,
+  onEliminar, 
 }) => {
+  // Estados para Modal de Crear/Editar
   const [modalVisible, setModalVisible] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [facturaActual, setFacturaActual] = useState(null);
+
+  // ESTADOS PARA MODAL DE ELIMINACIÓN INTERNO (Estilo UsuariosView)
+  const [modalEliminarVisible, setModalEliminarVisible] = useState(false);
+  const [facturaAEliminar, setFacturaAEliminar] = useState(null);
 
   const [form] = Form.useForm();
 
@@ -84,6 +90,26 @@ const FacturasView = ({
     }
   };
 
+  // 🔴 FUNCIÓN PARA ABRIR EL MODAL DE ELIMINACIÓN INTERNO
+  const abrirModalEliminar = (factura) => {
+    setFacturaAEliminar(factura);
+    setModalEliminarVisible(true);
+  };
+
+  // 🔴 FUNCIÓN QUE SE EJECUTA AL CONFIRMAR LA ELIMINACIÓN EN EL MODAL INTERNO
+  const confirmarEliminar = async () => {
+    if (!facturaAEliminar) return;
+
+    try {
+        await onEliminar(facturaAEliminar.IdFactura);
+        setModalEliminarVisible(false); 
+        setFacturaAEliminar(null);
+    } catch (err) {
+        setModalEliminarVisible(false);
+        setFacturaAEliminar(null);
+    }
+  };
+
   const columnas = [
     { 
       title: "ID", 
@@ -106,31 +132,41 @@ const FacturasView = ({
       render: (valor) => `$${parseFloat(valor).toFixed(2)}`
     },
     {
-      title: "PDF",
-      dataIndex: "UriFactura",
-      render: (uri) => uri ? (
+      title: "Factura",
+      dataIndex: "IdFactura",
+      render: (idFactura, record) => record.UriFactura ? (
         <Button 
-          type="link" 
-          icon={<FilePdfOutlined />}
-          href={uri} 
-          target="_blank" 
-          rel="noopener noreferrer"
+          type="default"
+         icon={<FileTextOutlined style={{ color: '#1890ff' }} />}  
+          onClick={() => window.open(`/factura/ver?id=${idFactura}`, '_blank')}
         >
-          Ver PDF
+          Ver Factura
         </Button>
-      ) : "Generando..."
+      ) : (
+        <span style={{ color: '#999' }}>Generando...</span>
+      )
     },
     {
       title: "Acciones",
-      width: 150,
+      width: 180, // Ancho como UsuariosView
       render: (_, factura) => esAdmin && (
-        <Button 
-          type="primary" 
-          size="small" 
-          onClick={() => abrirModal(factura)}
-        >
-          Editar
-        </Button>
+        // Estilo con div y gap
+        <div style={{ display: "flex", gap: "10px" }}>
+          <Button 
+            type="primary" 
+            size="small" 
+            onClick={() => abrirModal(factura)}
+          >
+            Editar
+          </Button>
+          <Button 
+            danger // Botón rojo
+            size="small" 
+            onClick={() => abrirModalEliminar(factura)} 
+          >
+            Eliminar
+          </Button>
+        </div>
       )
     }
   ];
@@ -159,6 +195,7 @@ const FacturasView = ({
         pagination={{ pageSize: 10 }}
       />
 
+      {/* MODAL DE CREACIÓN/EDICIÓN */}
       <Modal
         title={
           <span style={{ fontSize: '18px', fontWeight: 'bold' }}>
@@ -174,7 +211,6 @@ const FacturasView = ({
         width={600}
       >
         <Form form={form} layout="vertical">
-          
           {/* SELECT DE RESERVAS */}
           <Form.Item 
             name="IdReserva" 
@@ -215,6 +251,20 @@ const FacturasView = ({
             />
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* ✅ MODAL DE ELIMINACIÓN INTERNO (Estilo UsuariosView) */}
+      <Modal
+        title="Confirmar eliminación"
+        open={modalEliminarVisible}
+        okText="Eliminar"
+        okButtonProps={{ danger: true }}
+        onCancel={() => setModalEliminarVisible(false)}
+        onOk={confirmarEliminar}
+        destroyOnClose={true}
+      >
+        <p>¿Estás seguro de eliminar la factura de la **Reserva #{facturaAEliminar?.IdReserva || 'N/A'}**?</p>
+        <p style={{ color: 'red', fontSize: '12px' }}>Esta acción es permanente y no se puede deshacer.</p>
       </Modal>
     </div>
   );

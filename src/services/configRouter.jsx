@@ -12,6 +12,7 @@ import Navbar from '../components/Navbar.jsx';
 import Footer from '../components/Footer.jsx';
 import CarritoPage from '../components/Carrito/carritoPage.jsx';
 import ReservasPage from '../components/reservas/ReservasPage.jsx'
+import VisorFacturaIframe from '../components/facturas/VisorFacturaIframe.jsx'; 
 
 import { isAuthenticated } from '../services/auth.jsx'; 
 const MainLayout = ({ children }) => {
@@ -65,7 +66,6 @@ const ConfigRouter = () => {
             </PublicRoute>
           } 
         />
-
         {/* --- RUTAS PROTEGIDAS (Requieren Login) --- */}
         <Route
           path="/usuarios"
@@ -97,7 +97,15 @@ const ConfigRouter = () => {
           }
         />
         
-
+{/* ✨ NUEVA RUTA: Visor de Factura (SIN Navbar/Footer para pantalla completa) */}
+        <Route
+          path="/factura/ver"
+          element={
+            <ProtectedRoute>
+              <VisorFacturaIframe />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/facturas"
           element={
@@ -128,11 +136,8 @@ const ConfigRouter = () => {
           }
         />
 
-        {/* Rutas comentadas (Reservas, Carrito) mantendrían la misma estructura ProtectedRoute */}
 
         <Route path="/home" element={<RootRedirect />} />
-        
-        {/* Cualquier ruta desconocida manda al login o al home */}
         <Route path="*" element={<RootRedirect />} />
       </Routes>
     </Router>

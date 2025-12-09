@@ -26,6 +26,8 @@ const Navbar = () => {
     if (location.pathname.startsWith('/reservas')) return 'reservas';
     if (location.pathname.startsWith('/carrito')) return 'carrito';
     if (location.pathname.startsWith('/facturas')) return 'facturas';
+    if (location.pathname.startsWith('/facturastest')) return 'facturas2';
+    
 
     return 'inicio';
   })();
@@ -70,6 +72,7 @@ const Navbar = () => {
             <Menu.Item key="autos" icon={<CarOutlined />}>
               <Link to="/autos">Autos</Link>
             </Menu.Item>
+            
 
             {userIsLogged && !userIsAdmin && (
               <Menu.Item key="carrito" icon={<ShoppingCartOutlined />}>
