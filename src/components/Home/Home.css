@@ -57,11 +57,9 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    135deg,
-    rgba(0, 31, 63, 0.85),
-    rgba(0, 72, 144, 0.75)
-  );
+  background: linear-gradient(135deg,
+      rgba(0, 31, 63, 0.85),
+      rgba(0, 72, 144, 0.75));
   z-index: 0;
   opacity: 1;
   transform: scale(1.15);
@@ -79,10 +77,11 @@
 }
 
 /* Posicionar contenido sobre la capa oscura */
-.hero-section > * {
+.hero-section>* {
   position: relative;
   z-index: 1;
 }
+
 /* Título Hero */
 .hero-title {
   font-size: 26px;
@@ -94,11 +93,11 @@
   border-radius: 60px;
   backdrop-filter: blur(8px);
   border: 2px solid rgba(255, 255, 255, 0.2);
-  text-shadow: 
+  text-shadow:
     0 2px 4px rgba(0, 0, 0, 0.8),
     0 4px 8px rgba(0, 0, 0, 0.6);
   animation: fadeUp 1.2s ease-out;
-  box-shadow: 
+  box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
   font-weight: 400;
@@ -125,11 +124,11 @@
   border-radius: 60px;
   backdrop-filter: blur(8px);
   border: 2px solid rgba(255, 255, 255, 0.2);
-  text-shadow: 
+  text-shadow:
     0 2px 4px rgba(0, 0, 0, 0.8),
     0 4px 8px rgba(0, 0, 0, 0.6);
   animation: fadeUp 1.2s ease-out;
-  box-shadow: 
+  box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
   font-weight: 400;
@@ -539,6 +538,7 @@
     opacity: 0;
     transform: scale(1.02);
   }
+
   100% {
     opacity: 1;
     transform: scale(1);
@@ -550,6 +550,7 @@
     opacity: 0;
     transform: translateY(-30px);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0);
@@ -561,6 +562,7 @@
     opacity: 0;
     transform: translateY(30px);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0);
