@@ -46,7 +46,7 @@ const UsuariosView = ({ usuarios, loading, error, onCrear, onEditar, onEliminar 
         Rol: "Cliente",
         TipoIdentificacion: "Cédula",
         Pais: "Ecuador",
-        Contrasena: 'temporal123'
+        Contrasena: '12345'
       });
     }
     setModalVisible(true);
