@@ -1,8 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { 
     fetchFacturas,
-    fetchFacturasByUsuarioThunk, 
-    getFacturaForHTMLThunk,    
+    fetchFacturasByUsuarioThunk,    
     fetchFacturaById,           
     createFacturaThunk,
     updateFacturaThunk,
@@ -40,12 +39,7 @@ const facturasSlice = createSlice({
         state.loading = false; 
         state.error = action.payload || action.error.message || 'Error al cargar facturas del usuario'; 
       })
-      .addCase(getFacturaForHTMLThunk.pending, (state) => { state.loading = true; state.error = null; })
-      .addCase(getFacturaForHTMLThunk.fulfilled, (state) => { state.loading = false; })
-      .addCase(getFacturaForHTMLThunk.rejected, (state, action) => { 
-        state.loading = false; 
-        state.error = action.payload || action.error.message || 'Error al cargar la factura en HTML'; 
-      })
+      
       .addCase(createFacturaThunk.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(createFacturaThunk.fulfilled, (state) => { 
       })

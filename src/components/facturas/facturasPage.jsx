@@ -95,7 +95,7 @@ const FacturasPage = () => {
   const handleEditar = async (factura) => {
     try {
       await dispatch(updateFacturaThunk({
-        id: factura.IdFactura,
+        idFactura: factura.IdFactura,
         body: factura
       })).unwrap();
 

@@ -22,24 +22,29 @@ export async function getFacturasByUsuario(idUsuario) {
     throw error;
   }
 }
-export async function getFacturaForHTML(idFactura) {
-  try {
-    const response = await makeRequest(HttpMethod.GET, `/facturas/${idFactura}/html`);
-    if (!response.success) {
-      throw new Error('Error al obtener el HTML de la factura.');
-    }
-    return response.data; 
-  } catch (error) {
-    throw error;
-  }
+export async function getFacturaHtmlContent(id) {
+    try {
+        // Este endpoint devuelve el HTML directamente, no un DTO con la URL.
+        const response = await makeRequest(HttpMethod.GET, `/facturas/${id}/html`);
+        
+        if (!response.success) {
+             // Si el backend devuelve 400 (URL no generada), se maneja como error.
+             throw new Error(response.error || 'Error al obtener el contenido HTML.');
+        }
+        
+        // Asumiendo que makeRequest devuelve el contenido del HTML como string en response.data
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
 }
 
 
 
-export async function getFacturaById(id) {
+export async function getFacturaById(idFactura) {
   try {
     // ✅ CORRECCIÓN: Usamos 'id', no 'idFactura'
-    const response = await makeRequest(HttpMethod.GET, `/facturas/${id}`);
+    const response = await makeRequest(HttpMethod.GET, `/facturas/${idFactura}`);
     if (!response.success) return null;
     return response.data; // Aquí usualmente es directo si es un solo objeto, o response.data.data si devuelve array
   } catch (error) {
