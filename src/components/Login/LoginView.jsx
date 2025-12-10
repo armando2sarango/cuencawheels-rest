@@ -1,7 +1,7 @@
 import React from 'react';
 import { Form, Input, Button, Card, Typography, Divider, Checkbox } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
-import './Auth.css'; // CSS unificado
+import './Auth.css';
 
 const { Title, Text, Link } = Typography;
 
@@ -9,7 +9,18 @@ const LoginView = ({ loading, error, onLogin, onNavigateRegister }) => {
   const [form] = Form.useForm();
 
   const onFinish = (values) => {
-    onLogin(values.email, values.password, values.rememberMe);
+    // onFinish pasa los valores que ya fueron limpiados por normalize (ver abajo)
+    onLogin(values.email, values.password, values.rememberMe); 
+    // NOTA: La lógica de trim en handleLogin (LoginPage) ahora es redundante pero sirve como doble seguridad.
+  };
+
+  // ✅ Función de normalización: Limpia el valor antes de guardarlo en el estado del formulario.
+  // Esto previene que los espacios se guarden y envíen.
+  const trimNormalize = (value) => {
+    if (typeof value === 'string') {
+      return value.trim();
+    }
+    return value;
   };
 
   return (
@@ -36,6 +47,8 @@ const LoginView = ({ loading, error, onLogin, onNavigateRegister }) => {
               { required: true, message: 'Por favor ingresa tu correo electrónico' },
               { type: 'email', message: 'Por favor ingresa un correo válido' },
             ]}
+            // ✅ AGREGADO: Normaliza/limpia el valor antes de que se guarde.
+            normalize={trimNormalize} 
           >
             <Input 
               prefix={<UserOutlined />} 
@@ -51,6 +64,8 @@ const LoginView = ({ loading, error, onLogin, onNavigateRegister }) => {
               { required: true, message: 'Por favor ingresa tu contraseña' },
               { min: 6, message: 'La contraseña debe tener al menos 6 caracteres' },
             ]}
+            // ✅ AGREGADO: Normaliza/limpia el valor antes de que se guarde.
+            normalize={trimNormalize} 
           >
             <Input.Password 
               prefix={<LockOutlined />} 

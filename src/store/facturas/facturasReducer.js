@@ -1,38 +1,76 @@
 import { createSlice } from '@reduxjs/toolkit';
-import { fetchfacturas, createFacturaThunk, updateFacturaThunk, deleteFacturaThunk } from './thunks';
+import { 
+    fetchFacturas,
+    fetchFacturasByUsuarioThunk, 
+    getFacturaForHTMLThunk,    
+    fetchFacturaById,           
+    createFacturaThunk,
+    updateFacturaThunk,
+    deleteFacturaThunk 
+} from './thunks';
 
 const initialState = {
   facturas: [],
-  loading: false,
-  error: null
+  loading: false, 
+  error: null,    
 };
 
 const facturasSlice = createSlice({
   name: 'facturas',
   initialState,
-  reducers: {},
+  reducers: {
+  },
   extraReducers: (builder) => {
     builder
-      // FETCH
-      .addCase(fetchfacturas.pending, (state) => { state.loading = true; })
-      .addCase(fetchfacturas.fulfilled, (state, action) => {
+      .addCase(fetchFacturas.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(fetchFacturas.fulfilled, (state, action) => {
         state.loading = false;
         state.facturas = Array.isArray(action.payload) ? action.payload : [];
       })
-      .addCase(fetchfacturas.rejected, (state, action) => { state.loading = false; state.error = action.error.message; })
-      
-      // CREATE
-      .addCase(createFacturaThunk.fulfilled, (state) => { state.loading = false; })
-      
-      // UPDATE
-      .addCase(updateFacturaThunk.fulfilled, (state) => { state.loading = false; })
-      
-      // DELETE
+      .addCase(fetchFacturas.rejected, (state, action) => { 
+        state.loading = false; 
+        state.error = action.error.message || 'Error al cargar todas las facturas'; 
+      })
+      .addCase(fetchFacturasByUsuarioThunk.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(fetchFacturasByUsuarioThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        state.facturas = Array.isArray(action.payload) ? action.payload : [];
+      })
+      .addCase(fetchFacturasByUsuarioThunk.rejected, (state, action) => { 
+        state.loading = false; 
+        state.error = action.payload || action.error.message || 'Error al cargar facturas del usuario'; 
+      })
+      .addCase(getFacturaForHTMLThunk.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(getFacturaForHTMLThunk.fulfilled, (state) => { state.loading = false; })
+      .addCase(getFacturaForHTMLThunk.rejected, (state, action) => { 
+        state.loading = false; 
+        state.error = action.payload || action.error.message || 'Error al cargar la factura en HTML'; 
+      })
+      .addCase(createFacturaThunk.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(createFacturaThunk.fulfilled, (state) => { 
+      })
+      .addCase(createFacturaThunk.rejected, (state, action) => { 
+        state.loading = false; 
+        state.error = action.error.message || 'Error al crear la factura'; 
+      })
+      .addCase(updateFacturaThunk.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(updateFacturaThunk.fulfilled, (state) => { 
+        state.loading = false; 
+      })
+      .addCase(updateFacturaThunk.rejected, (state, action) => { 
+        state.loading = false; 
+        state.error = action.error.message || 'Error al actualizar la factura'; 
+      })
+      .addCase(deleteFacturaThunk.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(deleteFacturaThunk.fulfilled, (state, action) => {
         state.loading = false;
         if (action.payload.success) {
-           state.facturas = state.facturas.filter(f => f.IdFactura !== action.payload.idFactura);
+          state.facturas = state.facturas.filter(f => f.IdFactura !== action.payload.idFactura);
         }
+      })
+      .addCase(deleteFacturaThunk.rejected, (state, action) => { 
+        state.loading = false; 
+        state.error = action.error.message || 'Error al eliminar la factura'; 
       });
   }
 });

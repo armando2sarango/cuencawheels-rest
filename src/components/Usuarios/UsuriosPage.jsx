@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import UsuariosView from './UsuariosView';
 import { notification } from 'antd';
 import {fetchUsuarios,createUsuarioThunk,updateUsuarioThunk,deleteUsuarioThunk } from '../../store/usuarios/thunks';
+
 const UsuariosPage = () => {
 
   const dispatch = useDispatch();
@@ -12,12 +13,36 @@ const UsuariosPage = () => {
   useEffect(() => {
     dispatch(fetchUsuarios());
   }, [dispatch]);
+
+  // ✅ FUNCIÓN DE LIMPIEZA DE ERRORES (Importante para eliminar rutas de servidor)
+  const getErrorMessage = (error) => {
+    let rawMsg = 'Error al procesar la solicitud.';
+    
+    // 1. Obtener el mensaje completo del objeto de error o string
+    if (typeof error === 'string') rawMsg = error;
+    else if (error?.message) rawMsg = error.message;
+    else if (error?.data?.Message) rawMsg = error.data.Message;
+    else if (error?.ExceptionMessage) rawMsg = error.ExceptionMessage;
+
+    // 2. Limpiar la ruta del servidor (filtra cualquier texto después de 'en C:\' o primer salto de línea)
+    let cleanedMsg = rawMsg.split('en C:\\')[0].trim();
+    cleanedMsg = cleanedMsg.split('\n')[0].trim(); 
+    
+    // 3. Quitar el prefijo de error SOAP si aún existe
+    if (cleanedMsg.includes('System.Web.Services.Protocols.SoapException:')) {
+        cleanedMsg = cleanedMsg.replace('System.Web.Services.Protocols.SoapException:', '').trim();
+    }
+    
+    // 4. Si el mensaje final está vacío o es demasiado corto, usar el predeterminado
+    return cleanedMsg || 'Ocurrió un error desconocido.';
+  };
+  
   const mapearUsuarioDTO = (values, idUsuario = 0) => ({
     IdUsuario: idUsuario,
     Nombre: values.Nombre,
     Apellido: values.Apellido,
     Email: values.Email,
-    Contrasena: values.Contrasena,
+    Contrasena: values.Contrasena || "12345",
     Direccion: values.Direccion,
     Edad: values.Edad ? parseInt(values.Edad) : null,
     Pais: values.Pais,
@@ -26,6 +51,7 @@ const UsuariosPage = () => {
     UsuarioCorreo: values.UsuarioCorreo || values.Email,
     Rol: values.Rol
   });
+  
   const handleCrear = async (formValues) => {
     try {
       const nuevoUsuario = mapearUsuarioDTO(formValues, 0);
@@ -43,13 +69,15 @@ const UsuariosPage = () => {
     } catch (err) {
       api.error({
         message: 'Error al crear usuario',
-        description: err.message || 'Ocurrió un error.',
+        // ✅ USAMOS getErrorMessage AQUÍ
+        description: getErrorMessage(err), 
         placement: 'topRight',
         duration: 4,
       });
       return false;
     }
   };
+  
   const handleEditar = async (formValues) => {
     try {
       const usuarioEditado = mapearUsuarioDTO(
@@ -74,13 +102,15 @@ const UsuariosPage = () => {
     } catch (err) {
       api.error({
         message: 'Error al actualizar usuario',
-        description: err.message || 'No se pudo actualizar.',
+        // ✅ USAMOS getErrorMessage AQUÍ
+        description: getErrorMessage(err),
         placement: 'topRight',
         duration: 4,
       });
       return false;
     }
   };
+  
   const handleEliminar = async (id) => {
     try {
       const result = await dispatch(deleteUsuarioThunk(id)).unwrap();
@@ -92,6 +122,7 @@ const UsuariosPage = () => {
           duration: 3,
         });
       } else {
+        // Este caso debería ocurrir raramente si el backend lanza SoapException al fallar
         api.error({
           message: 'El servidor no eliminó el usuario',
           placement: 'topRight',
@@ -105,7 +136,8 @@ const UsuariosPage = () => {
     } catch (err) {
       api.error({
         message: 'Error al eliminar usuario',
-        description: err.message || 'No se pudo eliminar.',
+        // ✅ USAMOS getErrorMessage AQUÍ
+        description: getErrorMessage(err),
         placement: 'topRight',
         duration: 4,
       });

@@ -215,32 +215,37 @@ const UsuariosView = ({ usuarios, loading, error, onCrear, onEditar, onEliminar 
                 <Input prefix={<MailOutlined />} />
               </Form.Item>
             </Col>
-{!userIsAdmin && (
-  <Col span={12}>
-    <Form.Item 
-      name="Contrasena" 
-      label="Contraseña" 
-      rules={[
-        { required: !usuarioActual, message: 'Contraseña requerida para crear' },
-        { 
-          validator: async (_, value) => {
-              if (!value) return Promise.resolve();
-              const error = validatePassword(value);
-              if (error) return Promise.reject(new Error(error));
-              return Promise.resolve();
-          }
-        },
-      ]}
-      help={usuarioActual ? "Dejar vacío para mantener la actual" : "Min. 8 chars, Mayús, Minús, Número y Símbolo"}
-      hasFeedback={!!form.getFieldValue('Contrasena')}
-    >
-      <Input.Password 
-        prefix={<LockOutlined />} 
-        placeholder={usuarioActual ? "********" : "Nueva contraseña"}
-      />
-    </Form.Item>
-  </Col>
-)}
+
+<Col span={12}>
+  <Form.Item 
+    name="Contrasena" 
+    label="Contraseña" 
+    rules={[
+      { required: !usuarioActual && !userIsAdmin, message: 'Contraseña requerida para crear' },
+      { 
+        validator: async (_, value) => {
+            if (!value && usuarioActual) return Promise.resolve();
+            if (!value && !usuarioActual && !userIsAdmin) return Promise.reject(new Error('La contraseña es obligatoria'));
+            const error = validatePassword(value);
+            if (error && value && !userIsAdmin) return Promise.reject(new Error(error));
+            return Promise.resolve();
+        }
+      },
+    ]}
+    help={
+      userIsAdmin 
+        ? "Se asignará '12345' por defecto" 
+        : (usuarioActual ? "Dejar vacío para mantener la actual" : "Min. 8 chars, Mayús, Minús, Número y Símbolo")
+    }
+  >
+    <Input.Password 
+      prefix={<LockOutlined />} 
+      placeholder={userIsAdmin ? "12345 (por defecto)" : (usuarioActual ? "********" : "Nueva contraseña")}
+      disabled={userIsAdmin && !usuarioActual} 
+    />
+  </Form.Item>
+</Col>
+
 
           </Row>
 
@@ -271,7 +276,7 @@ const UsuariosView = ({ usuarios, loading, error, onCrear, onEditar, onEliminar 
           <Row gutter={16}>
             <Col span={8}>
                         <Form.Item
-                          name="edad"
+                          name="Edad"
                           label="Edad"
                           style={{ width: '120px' }}
                           rules={[

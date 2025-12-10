@@ -3,7 +3,7 @@ import {
   Table, Card, Tag, Button, Space, Popconfirm, Tooltip, Typography, Empty, Modal, Form, Select, DatePicker, Row, Col 
 } from 'antd';
 import { 
-  CloseCircleOutlined, DeleteOutlined, SyncOutlined, CarOutlined, 
+  CloseCircleOutlined, DeleteOutlined, SyncOutlined, CarOutlined, EditOutlined, // 👈 Agregar EditOutlined
   CheckOutlined, FlagOutlined, FileTextOutlined, CreditCardOutlined, PlusOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -14,14 +14,35 @@ const { Option } = Select;
 
 const ReservasView = ({ 
   reservas = [], loading, esAdmin, 
-  onEliminar, onCambiarEstado, onRefresh, onVerPagos, onPagar, onCrearReserva,
+  onEliminar, onCambiarEstado, onRefresh, onVerPagos, onPagar, 
+  onCrearReserva, onEditarReserva, // 👈 Recibimos onEditarReserva
   usuarios = [], vehiculos = []
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [form] = Form.useForm();
   const [loadingCreate, setLoadingCreate] = useState(false);
+  
+  const [reservaActual, setReservaActual] = useState(null);
+  const isEditing = !!reservaActual;
 
-  const handleCreate = async () => {
+  const abrirModalEditar = (reserva) => {
+      setReservaActual(reserva);
+      form.setFieldsValue({
+          IdUsuario: reserva.IdUsuario,
+          IdVehiculo: reserva.IdVehiculo,
+          fechas: [dayjs(reserva.FechaInicio), dayjs(reserva.FechaFin)],
+      });
+      setModalVisible(true);
+  };
+
+  const closeModal = () => {
+    form.resetFields();
+    setReservaActual(null);
+    setModalVisible(false);
+  }
+
+  // 🔴 FUNCIÓN UNIFICADA DE CREACIÓN/EDICIÓN
+  const handleCreateOrEdit = async () => {
       try {
           const values = await form.validateFields();
           setLoadingCreate(true);
@@ -29,7 +50,8 @@ const ReservasView = ({
           const [inicio, fin] = values.fechas;
           const vehiculo = vehiculos.find(v => v.IdVehiculo === values.IdVehiculo);
           const dias = fin.diff(inicio, 'day') || 1;
-          const total = (vehiculo?.PrecioDia || 0) * dias * 1.15;
+          const precioDia = vehiculo?.PrecioDia || 0;
+          const total = precioDia * dias * 1.15; // +15% IVA
 
           const dto = {
               IdUsuario: values.IdUsuario,
@@ -37,18 +59,31 @@ const ReservasView = ({
               FechaInicio: inicio.format('YYYY-MM-DDTHH:mm:ss'),
               FechaFin: fin.format('YYYY-MM-DDTHH:mm:ss'),
               Total: total,
-              Estado: 'Pendiente' 
+              Estado: reservaActual ? reservaActual.Estado : 'Pendiente' 
           };
 
-          const success = await onCrearReserva(dto);
-          if(success) {
-              setModalVisible(false);
-              form.resetFields();
+          let success = false;
+          
+          if (isEditing) {
+              dto.IdReserva = reservaActual.IdReserva;
+              success = await onEditarReserva(dto.IdReserva, dto); // 👈 Usar onEditarReserva
+          } else {
+              success = await onCrearReserva(dto);
           }
-      } catch(e) { console.error(e); }
+          
+          if(success) {
+              closeModal();
+          }
+      } catch(e) { 
+          console.error('Error en Create/Edit:', e); 
+      }
       finally { setLoadingCreate(false); }
   };
-
+const abrirModalCrear = () => {
+    form.resetFields();
+    setReservaActual(null); // Asegura que isEditing sea false
+    setModalVisible(true);  // Abre el modal
+  };
   const getColorEstado = (estado) => {
     switch (estado?.toLowerCase()) {
       case 'confirmada': return 'green';
@@ -112,37 +147,89 @@ const ReservasView = ({
       )
     },
     {
-      title: 'Acciones',
-      key: 'acciones',
-      width: 200,
-      render: (_, record) => {
-        const estado = record.Estado ? record.Estado.toLowerCase() : '';
-        return (
-          <Space size="small">
+  title: 'Acciones',
+  key: 'acciones',
+  width: 200,
+  render: (_, record) => {
+    const estado = record.Estado ? record.Estado.toLowerCase() : '';
+    // Condición para el botón Eliminar/Cancelar:
+    // 1. Siempre que sea Admin (esAdmin es true), O
+    // 2. Si es usuario normal Y el estado es 'pendiente'.
+    const puedeEliminarOCancelar = esAdmin || estado === 'pendiente';
+    
+    return (
+        <Space size="small">
+            
+            {/* 🔹 EDITAR - Solo cuando estado es Pendiente (para todos) */}
+            {estado === 'pendiente' && (
+                <Tooltip title="Modificar Fechas/Vehículo">
+                    <Button 
+                        size="small" 
+                        icon={<EditOutlined />} 
+                        onClick={() => abrirModalEditar(record)}
+                    >
+                        Editar
+                    </Button>
+                </Tooltip>
+            )}
+
+            {/* 🔹 PAGAR - Solo usuarios finales en estado Pendiente */}
             {!esAdmin && estado === 'pendiente' && (
-               <Button 
-                 type="primary" 
-                 size="small" 
-                 icon={<CreditCardOutlined />} 
-                 style={{ background: '#faad14', borderColor: '#faad14' }}
-                 onClick={() => onPagar(record)}
-               >
-                 Pagar
-               </Button>
+                <Button 
+                    type="primary" 
+                    size="small" 
+                    icon={<CreditCardOutlined />} 
+                    style={{ background: '#faad14', borderColor: '#faad14' }}
+                    onClick={() => onPagar(record)}
+                >
+                    Pagar
+                </Button>
             )}
+
+            {/* 🔹 ELIMINAR/CANCELAR - El administrador puede hacerlo en cualquier estado. El usuario, solo en Pendiente. */}
+            {puedeEliminarOCancelar && (
+                <Popconfirm 
+                    title={esAdmin ? "¿Eliminar Reserva permanentemente?" : "¿Cancelar esta reserva?"} 
+                    onConfirm={() => onEliminar(record.IdReserva)}
+                    // Nota: Se recomienda solo permitir eliminar permanentemente si la reserva es Pendiente, Cancelada o Rechazada
+                >
+                    <Button size="small" danger icon={<DeleteOutlined />}>
+                        {esAdmin ? "Eliminar" : "Cancelar"}
+                    </Button>
+                </Popconfirm>
+            )}
+
+
+            {/* 🔹 VER FACTURA - Confirmada o Finalizada (para todos) */}
             {(estado === 'confirmada' || estado === 'finalizada') && (
-              <Tooltip title="Ver Factura">
-                <Button type="text" icon={<FileTextOutlined style={{ color: '#1890ff' }} />} onClick={() => onVerPagos(record.IdReserva, record.IdUsuario)} />
-              </Tooltip>
+                <Button 
+                    type="default" 
+                    size="small" 
+                    icon={<FileTextOutlined style={{ color: '#1890ff' }} />} 
+                    onClick={() => {
+                        const idUsuarioFactura = record.IdUsuario || 0;
+                        onVerPagos(record.IdReserva, idUsuarioFactura);
+                    }} 
+                >
+                    Ver Factura
+                </Button>
             )}
+
+            {/* 🔹 FINALIZAR - Solo Admin cuando estado es Confirmada */}
             {esAdmin && estado === 'confirmada' && (
-               <Popconfirm title="¿Finalizar Renta?" onConfirm={() => onCambiarEstado(record.IdReserva, 'Finalizada', record)}>
-                  <Button size="small" icon={<FlagOutlined />}>Finalizar</Button>
-               </Popconfirm>
+                <Popconfirm 
+                    title="¿Finalizar Renta y liberar vehículo?" 
+                    onConfirm={() => onCambiarEstado(record.IdReserva, 'Finalizada', record)}
+                >
+                    <Button size="small" icon={<FlagOutlined />}>
+                        Finalizar
+                    </Button>
+                </Popconfirm>
             )}
-          </Space>
-        );
-      }
+            
+        </Space>
+    );
+}
     }
   ].filter(col => !col.hidden);
 
@@ -151,8 +238,8 @@ const ReservasView = ({
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
         <Title level={2}>{esAdmin ? "Gestión de Reservas" : "Mis Reservas"}</Title>
         <Space>
-            {esAdmin && <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalVisible(true)}>Nueva Reserva</Button>}
-            <Button icon={<SyncOutlined />} onClick={onRefresh}>Actualizar</Button>
+          {esAdmin && <Button type="primary" icon={<PlusOutlined />} onClick={abrirModalCrear}>Nueva Reserva</Button>}
+          <Button icon={<SyncOutlined />} onClick={onRefresh}>Actualizar</Button>
         </Space>
       </div>
 
@@ -168,23 +255,29 @@ const ReservasView = ({
         />
       </Card>
 
-      {/* Modal Crear Reserva (Admin) */}
-      <Modal title="Nueva Reserva" open={modalVisible} onCancel={() => setModalVisible(false)} onOk={handleCreate} confirmLoading={loadingCreate}>
-         <Form form={form} layout="vertical">
-             <Form.Item name="IdUsuario" label="Cliente" rules={[{required:true}]}>
-                 <Select showSearch optionFilterProp="children">
-                     {usuarios.map(u => <Option key={u.IdUsuario} value={u.IdUsuario}>{u.Nombre} {u.Apellido}</Option>)}
-                 </Select>
-             </Form.Item>
-             <Form.Item name="IdVehiculo" label="Vehículo" rules={[{required:true}]}>
-                 <Select showSearch optionFilterProp="children">
-                     {vehiculos.filter(v => v.Estado === 'Disponible').map(v => <Option key={v.IdVehiculo} value={v.IdVehiculo}>{v.Marca} {v.Modelo}</Option>)}
-                 </Select>
-             </Form.Item>
-             <Form.Item name="fechas" label="Fechas" rules={[{required:true}]}>
-                 <RangePicker style={{width:'100%'}} format="DD/MM/YYYY" />
-             </Form.Item>
-         </Form>
+      {/* Modal Crear/Editar Reserva */}
+      <Modal 
+          title={isEditing ? "Editar Reserva" : "Nueva Reserva"} 
+          open={modalVisible} 
+          onCancel={closeModal} 
+          onOk={handleCreateOrEdit} 
+          confirmLoading={loadingCreate}
+      >
+          <Form form={form} layout="vertical">
+              <Form.Item name="IdUsuario" label="Cliente" rules={[{required:true}]}>
+                  <Select showSearch optionFilterProp="children" disabled={!esAdmin}> {/* Solo Admin puede cambiar cliente o si es edición */}
+                      {usuarios.map(u => <Option key={u.IdUsuario} value={u.IdUsuario}>{u.Nombre} {u.Apellido}</Option>)}
+                  </Select>
+              </Form.Item>
+              <Form.Item name="IdVehiculo" label="Vehículo" rules={[{required:true}]}>
+                  <Select showSearch optionFilterProp="children" disabled={!esAdmin && isEditing}> {/* Si el usuario edita, solo puede cambiar las fechas */}
+                      {vehiculos.filter(v => v.Estado === 'Disponible' || (isEditing && v.IdVehiculo === reservaActual.IdVehiculo)).map(v => <Option key={v.IdVehiculo} value={v.IdVehiculo}>{v.Marca} {v.Modelo}</Option>)}
+                  </Select>
+              </Form.Item>
+              <Form.Item name="fechas" label="Fechas" rules={[{required:true}]}>
+                  <RangePicker style={{width:'100%'}} format="DD/MM/YYYY" />
+              </Form.Item>
+          </Form>
       </Modal>
     </div>
   );

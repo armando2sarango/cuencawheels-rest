@@ -39,12 +39,10 @@
   color: rgb(11, 11, 11);
 }
 
-/* ---- MENU ---- */
+/* ---- MENU HORIZONTAL (DESKTOP) ---- */
 .navbar-menu {
   background: transparent !important;
   border-bottom: none !important;
-
-  /* ESTA ES LA CLAVE PARA QUE NO APAREZCAN LOS "..." */
   display: flex !important;
   flex-wrap: nowrap !important;
   align-items: center;
@@ -56,19 +54,17 @@
   transition: 0.25s ease-in-out;
 }
 
-/* Íconos del menú */
+/* Estilos de Ítems, Hover y Selección (sin cambios, ya están bien) */
 .navbar-menu .ant-menu-item i,
 .navbar-menu .ant-menu-item span svg {
   color: white !important;
 }
 
-/* Texto normal */
 .navbar-menu .ant-menu-item a {
   color: white !important;
   transition: 0.25s;
 }
 
-/* Hover */
 .navbar-menu .ant-menu-item:hover {
   background-color: white !important;
   border-radius: 6px;
@@ -83,37 +79,82 @@
   color: #105890 !important;
 }
 
-/* Seleccionado */
-/* ===== ÍTEM SELECCIONADO: texto + íconos en NEGRO ===== */
 .navbar-menu .ant-menu-item.ant-menu-item-selected {
-  background-color: white !important;
-  border-radius: 6px;
+background-color: white !important;
+border-radius: 6px;
 }
 
-/* Texto */
 .navbar-menu .ant-menu-item.ant-menu-item-selected a,
 .navbar-menu .ant-menu-item.ant-menu-item-selected .ant-menu-title-content,
 .navbar-menu .ant-menu-item.ant-menu-item-selected .ant-menu-title-content * {
-  color: #000 !important;
+color: #000 !important;
 }
 
-/* Íconos (AntD usa color, fill o stroke según el icono) */
 .navbar-menu .ant-menu-item.ant-menu-item-selected .anticon,
 .navbar-menu .ant-menu-item.ant-menu-item-selected svg,
 .navbar-menu .ant-menu-item.ant-menu-item-selected span svg {
   color: #000 !important;
-  fill: #000 !important;
-  stroke: #000 !important;
+fill: #000 !important;
+stroke: #000 !important;
 }
-
 
 /* Botón derecho */
-.ant-btn-primary {
+.ant-btn-primary, .action-button { /* Aplicamos la clase action-button al botón de la derecha */
   background-color: #3d7afc;
-  border-color: #3d7afc;
+border-color: #3d7afc;
 }
 
-.ant-btn-primary:hover {
+.ant-btn-primary:hover, .action-button:hover {
   background-color: #5f95ff !important;
   border-color: #5f95ff !important;
+}
+
+/* ==============================================
+   RESPONSIVE DESIGN
+============================================== */
+
+/* Ocultar botón de hamburguesa y menú de cajón por defecto */
+.menu-mobile-button {
+    display: none !important;
+}
+
+.drawer-actions {
+    padding: 20px;
+    border-top: 1px solid #f0f0f0;
+}
+
+/* Estilos para el menú vertical dentro del Drawer */
+.drawer-menu.ant-menu-vertical {
+    border-right: none;
+}
+/* Asegurar que los enlaces dentro del Drawer tengan buen color */
+.drawer-menu.ant-menu-vertical .ant-menu-item a {
+    color: #333 !important; 
+}
+
+
+/* Puntos de Ruptura (Max 992px) */
+@media (max-width: 992px) {
+    /* Ocultar el menú horizontal y los botones de acción grandes */
+    .menu-desktop, .navbar-right-actions {
+        display: none !important;
+    }
+    
+    /* Mostrar el botón de hamburguesa */
+    .menu-mobile-button {
+        display: inline-flex !important;
+    }
+
+    /* Reducir padding de la Navbar */
+    .navbar-header {
+        padding: 0 15px;
+    }
+
+    /* Reducir tamaño del logo en móvil si es necesario */
+    .navbar-logo img {
+        width: 45px;
+    }
+    .navbar-logo span {
+        font-size: 18px;
+    }
 }

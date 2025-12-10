@@ -22,6 +22,20 @@ export async function getFacturasByUsuario(idUsuario) {
     throw error;
   }
 }
+export async function getFacturaForHTML(idFactura) {
+  try {
+    const response = await makeRequest(HttpMethod.GET, `/facturas/${idFactura}/html`);
+    if (!response.success) {
+      throw new Error('Error al obtener el HTML de la factura.');
+    }
+    return response.data; 
+  } catch (error) {
+    throw error;
+  }
+}
+
+
+
 export async function getFacturaById(id) {
   try {
     // ✅ CORRECCIÓN: Usamos 'id', no 'idFactura'
