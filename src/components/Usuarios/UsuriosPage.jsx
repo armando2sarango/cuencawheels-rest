@@ -37,8 +37,8 @@ const UsuariosPage = () => {
     return cleanedMsg || 'Ocurrió un error desconocido.';
   };
   
-  const mapearUsuarioDTO = (values, idUsuario = 0) => ({
-    IdUsuario: idUsuario,
+  const mapearUsuarioDTO = (values, IdUsuario = 0) => ({
+    IdUsuario: IdUsuario,
     Nombre: values.Nombre,
     Apellido: values.Apellido,
     Email: values.Email,

@@ -39,7 +39,7 @@ export const isAdmin = () => {
   const authData = getAuth();
   if (!authData) return false;
   const role = authData.userRole;
-  return role=== 'Administrador';
+  return role=== 'Administrador' || role==='Admin';
 };
 
 export const isCliente = () => {

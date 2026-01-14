@@ -116,7 +116,7 @@ const UsuariosView = ({ usuarios, loading, error, onCrear, onEditar, onEliminar 
     { title: "Apellido", dataIndex: "Apellido", ellipsis: true },
     { title: "Email", dataIndex: "Email", ellipsis: true },
     { title: "Cedula", dataIndex: "Identificacion" },
-    { title: "Rol", dataIndex: "Rol", render: (rol) => <Tag color={rol === 'Administrador' ? 'blue' : 'green'}>{rol}</Tag> },
+    { title: "Rol", dataIndex: "Rol", render: (rol) => <Tag color={rol === 'Administrador' || rol === 'Admin' ? 'blue' : 'green'}>{rol}</Tag> },
     {
       title: "Acciones",
       width: 180,

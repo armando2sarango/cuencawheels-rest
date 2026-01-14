@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Table, Button, Modal, Form, InputNumber, Select,Space } from 'antd'; 
-import { FilePdfOutlined,ExclamationCircleOutlined,DeleteOutlined,FileTextOutlined} from '@ant-design/icons';
+import { Table, Button, Modal, Form, InputNumber, Select, Space, message } from 'antd'; 
+import { FilePdfOutlined, ExclamationCircleOutlined, DeleteOutlined, FileTextOutlined, EyeOutlined } from '@ant-design/icons';
 import moment from 'moment';
 
 const { Option } = Select;
@@ -13,15 +13,12 @@ const FacturasView = ({
   esAdmin, 
   onCrear, 
   onEditar, 
-  api ,
+  api,
   onEliminar, 
 }) => {
-  // Estados para Modal de Crear/Editar
   const [modalVisible, setModalVisible] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [facturaActual, setFacturaActual] = useState(null);
-
-  // ESTADOS PARA MODAL DE ELIMINACIÓN INTERNO (Estilo UsuariosView)
   const [modalEliminarVisible, setModalEliminarVisible] = useState(false);
   const [facturaAEliminar, setFacturaAEliminar] = useState(null);
 
@@ -90,68 +87,94 @@ const FacturasView = ({
     }
   };
 
-  // 🔴 FUNCIÓN PARA ABRIR EL MODAL DE ELIMINACIÓN INTERNO
   const abrirModalEliminar = (factura) => {
     setFacturaAEliminar(factura);
     setModalEliminarVisible(true);
   };
 
-  // 🔴 FUNCIÓN QUE SE EJECUTA AL CONFIRMAR LA ELIMINACIÓN EN EL MODAL INTERNO
   const confirmarEliminar = async () => {
     if (!facturaAEliminar) return;
 
     try {
-        await onEliminar(facturaAEliminar.IdFactura);
-        setModalEliminarVisible(false); 
-        setFacturaAEliminar(null);
+      await onEliminar(facturaAEliminar.IdFactura);
+      setModalEliminarVisible(false); 
+      setFacturaAEliminar(null);
     } catch (err) {
-        setModalEliminarVisible(false);
-        setFacturaAEliminar(null);
+      setModalEliminarVisible(false);
+      setFacturaAEliminar(null);
     }
+  };
+
+  // ✅ FUNCIÓN PARA ABRIR LA FACTURA PDF
+  const verFacturaPDF = (factura) => {
+    if (!factura.UriFactura) {
+      message.warning('La factura aún no ha sido generada');
+      return;
+    }
+
+    // Abrir directamente la URL del PDF de Cloudinary
+    window.open(factura.UriFactura, '_blank');
   };
 
   const columnas = [
     { 
       title: "ID", 
       dataIndex: "IdFactura", 
-      width: 60 
+      width: 80,
+      align: 'center'
     },
     { 
       title: "ID Reserva", 
       dataIndex: "IdReserva", 
-      width: 100 
+      width: 100,
+      align: 'center'
     },
     { 
       title: "Fecha Emisión", 
       dataIndex: "FechaEmision",
+      width: 180,
       render: (fecha) => fecha ? moment(fecha).format('DD/MM/YYYY HH:mm') : "-"
     },
     { 
       title: "Valor Total", 
       dataIndex: "ValorTotal",
-      render: (valor) => `$${parseFloat(valor).toFixed(2)}`
+      width: 120,
+      align: 'right',
+      render: (valor) => (
+        <span style={{ fontWeight: 'bold', color: '#52c41a' }}>
+          ${parseFloat(valor).toFixed(2)}
+        </span>
+      )
     },
     {
-      title: "Factura",
-      dataIndex: "IdFactura",
-      render: (idFactura, record) => record.UriFactura ? (
+      title: "Factura PDF",
+      dataIndex: "UriFactura",
+      width: 150,
+      align: 'center',
+      render: (uri, record) => uri ? (
         <Button 
-          type="default"
-         icon={<FileTextOutlined style={{ color: '#1890ff' }} />}  
-          onClick={() => window.open(`/factura/ver?id=${idFactura}`, '_blank')}
+          type="primary"
+          icon={<FilePdfOutlined />}
+          onClick={() => verFacturaPDF(record)}
+          style={{ 
+            backgroundColor: '#ff4d4f',
+            borderColor: '#ff4d4f'
+          }}
         >
-          Ver Factura
+          Ver PDF
         </Button>
       ) : (
-        <span style={{ color: '#999' }}>Generando...</span>
+        <span style={{ color: '#999', fontSize: '12px' }}>
+          ⏳ Generando...
+        </span>
       )
     },
     {
       title: "Acciones",
-      width: 180, // Ancho como UsuariosView
+      width: 180,
+      align: 'center',
       render: (_, factura) => esAdmin && (
-        // Estilo con div y gap
-        <div style={{ display: "flex", gap: "10px" }}>
+        <Space size="small">
           <Button 
             type="primary" 
             size="small" 
@@ -160,28 +183,35 @@ const FacturasView = ({
             Editar
           </Button>
           <Button 
-            danger // Botón rojo
+            danger
             size="small" 
+            icon={<DeleteOutlined />}
             onClick={() => abrirModalEliminar(factura)} 
           >
             Eliminar
           </Button>
-        </div>
+        </Space>
       )
     }
   ];
 
   return (
-    <div>
+    <div style={{ padding: '24px' }}>
       <div style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center', 
-        marginBottom: 16 
+        marginBottom: 24 
       }}>
-        <h2>📄 Gestión de Facturas</h2>
+        <h2 style={{ margin: 0, fontSize: '24px' }}>
+          📄 Gestión de Facturas ({facturas.length})
+        </h2>
         {esAdmin && (
-          <Button type="primary" onClick={() => abrirModal()}>
+          <Button 
+            type="primary" 
+            size="large"
+            onClick={() => abrirModal()}
+          >
             + Nueva Factura
           </Button>
         )}
@@ -192,7 +222,12 @@ const FacturasView = ({
         dataSource={facturas}
         loading={loading}
         rowKey={(f) => f.IdFactura}
-        pagination={{ pageSize: 10 }}
+        pagination={{ 
+          pageSize: 10,
+          showSizeChanger: true,
+          showTotal: (total) => `Total: ${total} facturas`
+        }}
+        bordered
       />
 
       {/* MODAL DE CREACIÓN/EDICIÓN */}
@@ -211,7 +246,6 @@ const FacturasView = ({
         width={600}
       >
         <Form form={form} layout="vertical">
-          {/* SELECT DE RESERVAS */}
           <Form.Item 
             name="IdReserva" 
             label="🎫 Reserva"
@@ -233,6 +267,7 @@ const FacturasView = ({
               ))}
             </Select>
           </Form.Item>
+
           <Form.Item 
             name="ValorTotal" 
             label="💵 Valor Total"
@@ -253,18 +288,30 @@ const FacturasView = ({
         </Form>
       </Modal>
 
-      {/* ✅ MODAL DE ELIMINACIÓN INTERNO (Estilo UsuariosView) */}
+      {/* MODAL DE ELIMINACIÓN */}
       <Modal
-        title="Confirmar eliminación"
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <ExclamationCircleOutlined style={{ fontSize: '24px', color: '#ff4d4f' }} />
+            <span>Confirmar eliminación</span>
+          </div>
+        }
         open={modalEliminarVisible}
-        okText="Eliminar"
+        okText="Sí, eliminar"
         okButtonProps={{ danger: true }}
+        cancelText="Cancelar"
         onCancel={() => setModalEliminarVisible(false)}
         onOk={confirmarEliminar}
         destroyOnClose={true}
       >
-        <p>¿Estás seguro de eliminar la factura de la **Reserva #{facturaAEliminar?.IdReserva || 'N/A'}**?</p>
-        <p style={{ color: 'red', fontSize: '12px' }}>Esta acción es permanente y no se puede deshacer.</p>
+        <div style={{ paddingLeft: '36px' }}>
+          <p style={{ margin: '8px 0', fontSize: '15px' }}>
+            ¿Estás seguro de eliminar la factura <strong>#{facturaAEliminar?.IdFactura}</strong> de la Reserva <strong>#{facturaAEliminar?.IdReserva}</strong>?
+          </p>
+          <p style={{ color: '#ff4d4f', fontSize: '13px', margin: '8px 0 0 0' }}>
+            ⚠️ Esta acción es permanente y no se puede deshacer.
+          </p>
+        </div>
       </Modal>
     </div>
   );

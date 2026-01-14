@@ -22,9 +22,11 @@ const usuariosSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchUsuarios.fulfilled, (state, action) => {
-        state.loading = false;
-        state.usuarios = Array.isArray(action.payload) ? action.payload : [];
-      })
+  state.loading = false;
+  // ✅ Busca en .data primero, si no, mira si el payload mismo es el array
+  const lista = action.payload?.data || (Array.isArray(action.payload) ? action.payload : []);
+  state.usuarios = lista;
+})
       .addCase(fetchUsuarios.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || 'Error al cargar';

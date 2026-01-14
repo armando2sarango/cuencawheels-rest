@@ -1,13 +1,15 @@
 // src/components/Autos/AutosView.jsx
 import React, { useState } from 'react';
-import { Card, Button, Modal, Form, Input, InputNumber, Select, Row, Col, Tag, message, Tooltip, Space, Empty,Typography} from 'antd';
+import { Card, Button, Modal, Form, Input, InputNumber, Select, Row, Col, Tag, message, Tooltip, Space, Empty, Typography} from 'antd';
 import { isAdmin } from '../../services/auth';
 import { ExclamationCircleOutlined, EyeOutlined, EditOutlined, DeleteOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, ClearOutlined, ShoppingCartOutlined} from '@ant-design/icons';
 import './Autos.css';
-import { validatePlate,validateAnio,validateModelo,validatePrecio,validateImageUrl } from '../../utils/validations';
+import { validatePlate, validateAnio, validateModelo, validatePrecio, validateImageUrl } from '../../utils/validations';
+
 const { Option } = Select;
 const { TextArea } = Input;
 const { Text } = Typography;
+
 const AutosView = ({ 
   autos = [], loading, error, onEditar, onEliminar, onCrear, onBuscar, onRefresh, onAgregarCarrito, checkAuth
 }) => {
@@ -21,207 +23,254 @@ const AutosView = ({
   const [eliminandoAuto, setEliminandoAuto] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
   
+  // 🆕 Estados para filtros locales
+  const [filtrosActivos, setFiltrosActivos] = useState({});
+  
   const [form] = Form.useForm();
   const [filterForm] = Form.useForm();
   
   const listaAutos = Array.isArray(autos) ? autos : [];
+  
+  // 🆕 FUNCIÓN DE FILTRADO LOCAL
+  const autosFiltrados = React.useMemo(() => {
+    if (Object.keys(filtrosActivos).length === 0) {
+      return listaAutos; // Sin filtros, devolver todo
+    }
+    
+    return listaAutos.filter(auto => {
+      let cumpleFiltros = true;
+      
+      // Filtrar por categoría
+      if (filtrosActivos.categoria) {
+        cumpleFiltros = cumpleFiltros && auto.categoriaNombre === filtrosActivos.categoria;
+      }
+      
+      // Filtrar por transmisión
+      if (filtrosActivos.transmision) {
+        cumpleFiltros = cumpleFiltros && auto.transmisionNombre === filtrosActivos.transmision;
+      }
+      
+      // Filtrar por estado
+      if (filtrosActivos.estado) {
+        cumpleFiltros = cumpleFiltros && auto.estado === filtrosActivos.estado;
+      }
+      
+      return cumpleFiltros;
+    });
+  }, [listaAutos, filtrosActivos]);
+  
   const handleAddToCart = (auto) => {
     if (checkAuth()) {
-      onAgregarCarrito(auto.IdVehiculo);
+      onAgregarCarrito(auto.idVehiculo);
     }
   };
-  const handleFilterSearch = async (values) => {
-      const filtros = {};
-      if (values.IdCategoria) filtros.categoria = values.IdCategoria; 
-      if (values.IdTransmision) filtros.transmision = values.IdTransmision; 
-      if (values.Estado) filtros.estado = values.Estado;
-      
-      if (Object.keys(filtros).length > 0) {
-          await onBuscar(filtros);
-      } else {
-          onRefresh();
-      }
+
+  const handleFilterSearch = (values) => {
+    const filtros = {};
+    
+    // Construir objeto de filtros solo con valores seleccionados
+    if (values.IdCategoria) filtros.categoria = values.IdCategoria;
+    if (values.IdTransmision) filtros.transmision = values.IdTransmision;
+    if (values.Estado) filtros.estado = values.Estado;
+    
+    // Actualizar filtros activos para el filtrado local
+    setFiltrosActivos(filtros);
   };
 
   const handleClearFilters = () => {
     filterForm.resetFields();
-    onRefresh(); 
+    setFiltrosActivos({}); // Limpiar filtros locales
   };
 
   const abrirModal = (auto = null) => {
-      setAutoActual(auto);
-      if (auto) {
-        form.setFieldsValue({
-          Marca: auto.Marca || '',
-          Modelo: auto.Modelo || '',
-          Anio: auto.Anio || new Date().getFullYear(),
-          IdCategoria: auto.IdCategoria || 1,
-          IdTransmision: auto.IdTransmision || 1,
-          Capacidad: auto.Capacidad || 5,
-          PrecioDia: parseFloat(auto.PrecioDia) || 0,
-          PrecioNormal: parseFloat(auto.PrecioNormal) || 0,
-          PrecioActual: parseFloat(auto.PrecioActual) || parseFloat(auto.PrecioDia) || 0,
-          Matricula: auto.Matricula || '',
-          IdPromocion: auto.IdPromocion || null,
-          PorcentajeDescuento: auto.PorcentajeDescuento || 0,
-          Estado: auto.Estado || 'Disponible',
-          Descripcion: auto.Descripcion || '',
-          IdSucursal: auto.IdSucursal || 1,
-          UrlImagen: auto.UrlImagen || ''
-        });
-      } else {
-        form.resetFields();
-        form.setFieldsValue({
-          Anio: new Date().getFullYear(),
-          IdCategoria: "",
-          IdTransmision: "",
-          Capacidad: "",
-          Estado: 'Disponible',
-          IdSucursal: "",
-          PorcentajeDescuento: 0
-        });
-      }
-      setModalVisible(true);
-    };
-
-    const cerrarModal = () => {
-      setModalVisible(false);
-      setAutoActual(null);
-      setSubmitLoading(false);
-      form.resetFields();
-    };
-
-const handleSubmit = async () => {
-  try {
-    const values = await form.validateFields();
-    setSubmitLoading(true);
-    
-    console.log('🔍 Valores del formulario ANTES de limpiar:', values);
-    console.log('🔍 Claves del formulario:', Object.keys(values));
-    
-    // 🚨 FUNCIÓN HELPER: Limpiar valores vacíos y convertir tipos
-    const cleanValue = (value, type = 'string', allowEmpty = false) => {
-      // Si es string vacío, null o undefined
-      if (value === '' || value === null || value === undefined) {
-        // Para strings, si allowEmpty es true, devolver string vacío, sino null
-        if (type === 'string' && allowEmpty) {
-          return '';
-        }
-        return null;
-      }
-      
-      // Convertir según el tipo
-      switch(type) {
-        case 'int':
-          const intValue = parseInt(value);
-          return isNaN(intValue) ? null : intValue;
-        case 'float':
-          const floatValue = parseFloat(value);
-          return isNaN(floatValue) ? null : floatValue;
-        default:
-          // Para strings, si está vacío después de trim, retornar null
-          if (typeof value === 'string') {
-            const trimmed = value.trim();
-            return trimmed === '' ? null : trimmed;
-          }
-          return value;
-      }
-    };
-    
-    // 🛡️ Construir payload limpio SIN STRINGS VACÍOS
-    const payload = {
-      Marca: cleanValue(values.Marca) || null,
-      Modelo: cleanValue(values.Modelo) || null,
-      Anio: cleanValue(values.Anio, 'int'),
-      IdCategoria: cleanValue(values.IdCategoria, 'int'),
-      IdTransmision: cleanValue(values.IdTransmision, 'int'),
-      Capacidad: cleanValue(values.Capacidad, 'int') || 5,
-      PrecioDia: cleanValue(values.PrecioDia, 'float') || 0,
-      PrecioNormal: cleanValue(values.PrecioNormal, 'float') || 0,
-      PrecioActual: cleanValue(values.PrecioActual, 'float') || cleanValue(values.PrecioDia, 'float') || 0,
-      Matricula: cleanValue(values.Matricula) || null, 
-      IdPromocion: cleanValue(values.IdPromocion, 'int'),
-      PorcentajeDescuento: cleanValue(values.PorcentajeDescuento, 'float') || 0,
-      Estado: cleanValue(values.Estado) || 'Disponible',
-      Descripcion: cleanValue(values.Descripcion) || null, // ← Cambio: null en lugar de ''
-      IdSucursal: cleanValue(values.IdSucursal, 'int'),
-      UrlImagen: cleanValue(values.UrlImagen) || null // ← Cambio: null en lugar de ''
-    };
-
-    // 🚨 ELIMINAR explícitamente cualquier clave con nombre vacío
-    const cleanedPayload = {};
-    for (const [key, value] of Object.entries(payload)) {
-      if (key && key.trim() !== '') {
-        cleanedPayload[key] = value;
-      } else {
-        console.warn('⚠️ Se detectó y eliminó una clave vacía:', key);
-      }
-    }
-
-    if (autoActual) {
-      cleanedPayload.IdVehiculo = autoActual.IdVehiculo;
-    }
-
-    console.log('📤 Payload limpio a enviar:', cleanedPayload);
-    console.log('📤 Claves del payload:', Object.keys(cleanedPayload));
-
-    let success = false;
-    if (autoActual) {
-      success = await onEditar(autoActual.IdVehiculo, cleanedPayload);
+    setAutoActual(auto);
+    if (auto) {
+      form.setFieldsValue({
+        Marca: auto.marca || '',
+        Modelo: auto.modelo || '',
+        Anio: auto.anio || new Date().getFullYear(),
+        IdCategoria: auto.IdCategoria || undefined,
+        IdTransmision: auto.IdTransmision || undefined,
+        Capacidad: auto.capacidad || 5,
+        PrecioDia: parseFloat(auto.precioDia) || 0,
+        Matricula: auto.matricula || '',
+        Estado: auto.estado || 'Disponible',
+        Descripcion: auto.Descripcion || '',
+        IdSucursal: auto.idSucursal || undefined,
+        UrlImagen: auto.urlImagen || '',
+        PorcentajeDescuento: auto.PorcentajeDescuento || 0
+      });
     } else {
-      success = await onCrear(cleanedPayload);
+      form.resetFields();
+      form.setFieldsValue({
+        Anio: new Date().getFullYear(),
+        Estado: 'Disponible',
+        Capacidad: 5,
+        PorcentajeDescuento: 0
+      });
     }
+    setModalVisible(true);
+  };
 
-    if (success) cerrarModal();
-  } catch (error) {
-    console.error('❌ Error en validación del formulario:', error);
-    console.error('❌ Detalles del error:', {
-      name: error.name,
-      message: error.message,
-      errorFields: error.errorFields
-    });
-  } finally {
+  const cerrarModal = () => {
+    setModalVisible(false);
+    setAutoActual(null);
     setSubmitLoading(false);
-  }
-};
+    form.resetFields();
+  };
 
-    // --- MODAL ELIMINAR ---
-    const abrirModalEliminar = (auto) => {
-      setAutoAEliminar(auto);
-      setModalEliminarVisible(true);
-    };
-
-    const confirmarEliminar = async () => {
-      if (!autoAEliminar) return;
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      setSubmitLoading(true);
       
-      setEliminandoAuto(true);
-      try {
-        const resultado = await onEliminar(autoAEliminar.IdVehiculo);
-        if (resultado !== false) {
-          message.success('Vehículo eliminado correctamente');
-          setModalEliminarVisible(false);
-          setAutoAEliminar(null);
+      console.log('🔍 Valores del formulario:', values);
+      
+      // Función helper para limpiar valores
+      const cleanValue = (value, type = 'string') => {
+        if (value === '' || value === null || value === undefined) {
+          return null;
         }
-      } catch (err) {
-        console.error('❌ Error al eliminar:', err);
-      } finally {
-        setEliminandoAuto(false);
+        
+        switch(type) {
+          case 'int':
+            const intValue = parseInt(value);
+            return isNaN(intValue) ? null : intValue;
+          case 'float':
+            const floatValue = parseFloat(value);
+            return isNaN(floatValue) ? null : floatValue;
+          default:
+            if (typeof value === 'string') {
+              const trimmed = value.trim();
+              return trimmed === '' ? null : trimmed;
+            }
+            return value;
+        }
+      };
+      
+      // ✅ CONSTRUIR PAYLOAD CON NOMBRES CORRECTOS
+      const precioDiaValue = cleanValue(values.PrecioDia, 'float') || 0;
+      
+      const payload = {
+        marca: cleanValue(values.Marca),
+        modelo: cleanValue(values.Modelo),
+        anio: cleanValue(values.Anio, 'int'),
+        IdCategoria: cleanValue(values.IdCategoria, 'int'),
+        IdTransmision: cleanValue(values.IdTransmision, 'int'),
+        capacidad: cleanValue(values.Capacidad, 'int') || 5,
+        precioDia: precioDiaValue,
+        PrecioNormal: precioDiaValue, // ← AGREGADO: mismo valor que precioDia
+        PrecioActual: precioDiaValue, // ← AGREGADO: mismo valor que precioDia
+        matricula: cleanValue(values.Matricula),
+        estado: cleanValue(values.Estado) || 'Disponible',
+        Descripcion: cleanValue(values.Descripcion),
+        idSucursal: cleanValue(values.IdSucursal, 'int'),
+        urlImagen: cleanValue(values.UrlImagen),
+        PorcentajeDescuento: cleanValue(values.PorcentajeDescuento, 'float') || 0
+      };
+
+      // 🚨 VALIDACIÓN: asegurarse de que los campos requeridos no sean null
+      if (!payload.marca) {
+        message.error('La marca es requerida');
+        return;
       }
-    };
+      if (!payload.modelo) {
+        message.error('El modelo es requerido');
+        return;
+      }
+      if (!payload.anio) {
+        message.error('El año es requerido');
+        return;
+      }
+      if (!payload.matricula) {
+        message.error('La matrícula es requerida');
+        return;
+      }
+      if (!payload.IdCategoria) {
+        message.error('La categoría es requerida');
+        return;
+      }
+      if (!payload.IdTransmision) {
+        message.error('La transmisión es requerida');
+        return;
+      }
+      if (!payload.idSucursal) {
+        message.error('La sucursal es requerida');
+        return;
+      }
 
-    const cancelarEliminar = () => {
-      setModalEliminarVisible(false);
-      setAutoAEliminar(null);
-    };
-    const verDetalles = (auto) => {
-      setAutoActual(auto);
-      setDetallesVisible(true);
-    };
+      // Eliminar claves vacías/null (excepto campos opcionales como Descripcion y urlImagen)
+      const cleanedPayload = {};
+      for (const [key, value] of Object.entries(payload)) {
+        // Incluir campos opcionales aunque sean null
+        if (key === 'Descripcion' || key === 'urlImagen' || key === 'PorcentajeDescuento') {
+          cleanedPayload[key] = value;
+        } else if (value !== null && value !== undefined) {
+          // Para el resto, solo incluir si tienen valor
+          cleanedPayload[key] = value;
+        }
+      }
 
-    const cerrarDetalles = () => {
-      setDetallesVisible(false);
-      setAutoActual(null);
-    };
+      if (autoActual) {
+        cleanedPayload.idVehiculo = autoActual.idVehiculo;
+      }
+
+      console.log('📤 Payload limpio a enviar:', cleanedPayload);
+
+      let success = false;
+      if (autoActual) {
+        success = await onEditar(autoActual.idVehiculo, cleanedPayload);
+      } else {
+        success = await onCrear(cleanedPayload);
+      }
+
+      if (success) cerrarModal();
+    } catch (error) {
+      console.error('❌ Error en validación del formulario:', error);
+      message.error('Por favor completa todos los campos requeridos');
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
+
+  const abrirModalEliminar = (auto) => {
+    setAutoAEliminar(auto);
+    setModalEliminarVisible(true);
+  };
+
+  const confirmarEliminar = async () => {
+    if (!autoAEliminar) return;
+    
+    setEliminandoAuto(true);
+    try {
+      const resultado = await onEliminar(autoAEliminar.idVehiculo);
+      if (resultado !== false) {
+        message.success('Vehículo eliminado correctamente');
+        setModalEliminarVisible(false);
+        setAutoAEliminar(null);
+      }
+    } catch (err) {
+      console.error('❌ Error al eliminar:', err);
+    } finally {
+      setEliminandoAuto(false);
+    }
+  };
+
+  const cancelarEliminar = () => {
+    setModalEliminarVisible(false);
+    setAutoAEliminar(null);
+  };
+
+  const verDetalles = (auto) => {
+    setAutoActual(auto);
+    setDetallesVisible(true);
+  };
+
+  const cerrarDetalles = () => {
+    setDetallesVisible(false);
+    setAutoActual(null);
+  };
+
   if (loading) {
     return (
       <div className="loading" style={{ textAlign: 'center', padding: '50px' }}>
@@ -230,56 +279,49 @@ const handleSubmit = async () => {
     );
   }
 
-  if (error) {
-    return (
-      <div className="error" style={{ textAlign: 'center', padding: '50px', color: 'red' }}>
-        Error: {typeof error === 'string' ? error : error?.mensaje || 'Error desconocido'}
-      </div>
-    );
-  }
-
   return (
     <div className="autos-container" style={{ padding: '24px' }}>
       <Card style={{ marginBottom: '20px' }} bodyStyle={{ padding: '15px' }}>
         <Form 
-            form={filterForm} 
-            layout="inline" 
-            onFinish={handleFilterSearch}
-            style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}
+          form={filterForm} 
+          layout="inline" 
+          onFinish={handleFilterSearch}
+          style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}
         >
-            <Form.Item name="IdCategoria" style={{ minWidth: 150 }}>
-                <Select placeholder="Categoría" allowClear>
-                    <Option value="Sedán">Sedán</Option>
-                    <Option value="SUV">SUV</Option>
-                    <Option value="Lujo">Lujo</Option>
-                    <Option value="Deportivo">Deportivo</Option>
-                </Select>
-            </Form.Item>
+          <Form.Item name="IdCategoria" style={{ minWidth: 150 }}>
+            <Select placeholder="Categoría" allowClear>
+              <Option value="SEDÁN">Sedán</Option>
+              <Option value="SUV">SUV</Option>
+              <Option value="LUJO">Lujo</Option>
+              <Option value="DEPORTIVO">Deportivo</Option>
+            </Select>
+          </Form.Item>
 
-            <Form.Item name="IdTransmision" style={{ minWidth: 150 }}>
-                <Select placeholder="Transmisión" allowClear>
-                    <Option value="Automática">Automática</Option>
-                    <Option value="Manual">Manual</Option>
-                </Select>
-            </Form.Item>
+          <Form.Item name="IdTransmision" style={{ minWidth: 150 }}>
+            <Select placeholder="Transmisión" allowClear>
+              <Option value="AUTOMÁTICA">Automática</Option>
+              <Option value="MANUAL">Manual</Option>
+            </Select>
+          </Form.Item>
 
-            <Form.Item name="Estado" style={{ minWidth: 150 }}>
-                <Select placeholder="Estado" allowClear>
-                    <Option value="Disponible">Disponible</Option>
-                    <Option value="Rentado">Rentado</Option>
-                </Select>
-            </Form.Item>
+          <Form.Item name="Estado" style={{ minWidth: 150 }}>
+            <Select placeholder="Estado" allowClear>
+              <Option value="Disponible">Disponible</Option>
+              <Option value="Rentado">Rentado</Option>
+              <Option value="En Mantenimiento">En Mantenimiento</Option>
+            </Select>
+          </Form.Item>
 
-            <Form.Item>
-                <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>
-                    Buscar
-                </Button>
-            </Form.Item>
-            <Form.Item>
-                <Button onClick={handleClearFilters} icon={<ClearOutlined />}>
-                    Limpiar
-                </Button>
-            </Form.Item>
+          <Form.Item>
+            <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>
+              Buscar
+            </Button>
+          </Form.Item>
+          <Form.Item>
+            <Button onClick={handleClearFilters} icon={<ClearOutlined />}>
+              Limpiar
+            </Button>
+          </Form.Item>
         </Form>
       </Card>
 
@@ -289,7 +331,10 @@ const handleSubmit = async () => {
         alignItems: 'center',
         marginBottom: '24px' 
       }}>
-        <h2 style={{ margin: 0 }}>Gestión de Vehículos ({listaAutos.length})</h2>
+        <h2 style={{ margin: 0 }}>
+          Gestión de Vehículos ({autosFiltrados.length}
+          {Object.keys(filtrosActivos).length > 0 && ` de ${listaAutos.length}`})
+        </h2>
         <Space>
           <Button 
             icon={<ReloadOutlined />} 
@@ -297,86 +342,93 @@ const handleSubmit = async () => {
           >
             Actualizar
           </Button>
-           {userIsAdmin && (
-          <Button 
-            type="primary" 
-            icon={<PlusOutlined />} 
-            size="large" 
-            onClick={() => abrirModal()}
-          >
-            Crear Nuevo Vehículo
-          </Button>
-           )}
+          {userIsAdmin && (
+            <Button 
+              type="primary" 
+              icon={<PlusOutlined />} 
+              size="large" 
+              onClick={() => abrirModal()}
+            >
+              Crear Nuevo Vehículo
+            </Button>
+          )}
         </Space>
       </div>
 
-      {listaAutos.length === 0 ? (
-          <Empty 
-            description="No hay vehículos disponibles"
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-          >
-            {userIsAdmin && (
+      {autosFiltrados.length === 0 ? (
+        <Empty 
+          description={Object.keys(filtrosActivos).length > 0 
+            ? "No se encontraron vehículos con los filtros seleccionados" 
+            : "No hay vehículos disponibles"
+          }
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+        >
+          {userIsAdmin && Object.keys(filtrosActivos).length === 0 && (
             <Button type="primary" onClick={() => abrirModal()}>
               Crear primer vehículo
             </Button>
-            )}
-          </Empty>
-        ) : (
-          <Row gutter={[16, 16]}>
-            {listaAutos.map((auto) => (
-              <Col key={auto.IdVehiculo} xs={24} sm={12} md={8} lg={6}>
-                <Card
-                  hoverable
-                  cover={
-                    <div style={{ 
-                      height: '200px', 
-                      overflow: 'hidden',
-                      background: '#f0f0f0',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      position: 'relative'
-                    }}>
-                      {auto.UrlImagen ? (
-                        <img
-                          alt={`${auto.Marca} ${auto.Modelo}`}
-                          src={auto.UrlImagen}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          onError={(e) => { 
-                            e.target.src = 'https://via.placeholder.com/300x200?text=Sin+Imagen'; 
-                          }}
-                        />
-                      ) : (
-                        <div style={{ textAlign: 'center', color: '#999' }}>
-                          <p>Sin imagen</p>
-                        </div>
-                      )}
-                      <div style={{ 
-                        position: 'absolute', 
-                        top: '8px', 
-                        right: '8px',
-                        display: 'flex',
-                        gap: '4px',
-                        flexDirection: 'column'
-                      }}>
-                        <Tag color={auto.Estado === "Disponible" ? "green" : "red"}>
-                          {auto.Estado}
-                        </Tag>
-                        {auto.CategoriaNombre && (
-                          <Tag color="blue">{auto.CategoriaNombre}</Tag>
-                        )}
+          )}
+          {Object.keys(filtrosActivos).length > 0 && (
+            <Button onClick={handleClearFilters}>
+              Limpiar filtros
+            </Button>
+          )}
+        </Empty>
+      ) : (
+        <Row gutter={[16, 16]}>
+          {autosFiltrados.map((auto) => (
+            <Col key={auto.idVehiculo} xs={24} sm={12} md={8} lg={6}>
+              <Card
+                hoverable
+                cover={
+                  <div style={{ 
+                    height: '200px', 
+                    overflow: 'hidden',
+                    background: '#f0f0f0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    position: 'relative'
+                  }}>
+                    {auto.urlImagen ? (
+                      <img
+                        alt={`${auto.marca} ${auto.modelo}`}
+                        src={auto.urlImagen}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={(e) => { 
+                          e.target.src = 'https://via.placeholder.com/300x200?text=Sin+Imagen'; 
+                        }}
+                      />
+                    ) : (
+                      <div style={{ textAlign: 'center', color: '#999' }}>
+                        <p>Sin imagen</p>
                       </div>
+                    )}
+                    <div style={{ 
+                      position: 'absolute', 
+                      top: '8px', 
+                      right: '8px',
+                      display: 'flex',
+                      gap: '4px',
+                      flexDirection: 'column'
+                    }}>
+                      <Tag color={auto.estado === "Disponible" ? "green" : "red"}>
+                        {auto.estado}
+                      </Tag>
+                      {auto.categoriaNombre && (
+                        <Tag color="blue">{auto.categoriaNombre}</Tag>
+                      )}
                     </div>
-                  }
-                  actions={[
-                    
-                    !userIsAdmin && (
+                  </div>
+                }
+                actions={[
+                  !userIsAdmin && (
                     <Tooltip title="Añadir a lista de deseos">
                       <Button 
                         type="text"
                         icon={<ShoppingCartOutlined style={{ fontSize: '18px', color: '#1890ff' }} />}
                         onClick={() => handleAddToCart(auto)}
-                        disabled={auto.Estado !== 'Disponible'}
+                        disabled={auto.estado !== 'Disponible'}
                       />
                     </Tooltip>
                   ),
@@ -387,8 +439,9 @@ const handleSubmit = async () => {
                         icon={<EditOutlined />}
                         onClick={() => abrirModal(auto)}
                       />
-                    </Tooltip>),
-                    userIsAdmin && (
+                    </Tooltip>
+                  ),
+                  userIsAdmin && (
                     <Tooltip title="Eliminar">
                       <Button 
                         type="link" 
@@ -396,63 +449,63 @@ const handleSubmit = async () => {
                         icon={<DeleteOutlined />}
                         onClick={() => abrirModalEliminar(auto)}
                       />
-                    </Tooltip>),
-                    
-                    <Tooltip title="Ver detalles">
-                      <Button 
-                        type="link" 
-                        icon={<EyeOutlined />}
-                        onClick={() => verDetalles(auto)}
-                      />
                     </Tooltip>
-                  ].filter(Boolean)}
-                  >
-                    <Card.Meta
-  title={`${auto.Marca} ${auto.Modelo}`}
-  description={
-    <div>
-      <p style={{ margin: '4px 0' }}>
-        <strong>Año:</strong> {auto.Anio}
-      </p> 
-      {auto.EnPromocion ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', margin: '4px 0' }}>
-             <Text delete type="secondary" style={{ fontSize: '13px' }}>
-                Antes: ${parseFloat(auto.PrecioDia).toFixed(2)}
-             </Text>
-             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                 <strong style={{ fontSize: '18px', color: '#ff4d4f' }}>
-                    ${parseFloat(auto.PrecioFinal).toFixed(2)} / día
-                 </strong>
-                 <Tag color="red" style={{ borderRadius: '10px' }}>
-                    -{auto.PorcentajeDescuento}% OFF
-                 </Tag>
-             </div>
-             <span style={{ fontSize: '11px', color: '#ff4d4f' }}>
-                🔥 {auto.NombrePromocion}
-             </span>
-        </div>
-      ) : (
-        <p style={{ margin: '4px 0', fontSize: '18px', color: '#52c41a' }}>
-          <strong>${parseFloat(auto.PrecioDia || 0).toFixed(2)}</strong> / día
-        </p>
+                  ),
+                  <Tooltip title="Ver detalles">
+                    <Button 
+                      type="link" 
+                      icon={<EyeOutlined />}
+                      onClick={() => verDetalles(auto)}
+                    />
+                  </Tooltip>
+                ].filter(Boolean)}
+              >
+                <Card.Meta
+                  title={`${auto.marca} ${auto.modelo}`}
+                  description={
+                    <div>
+                      <p style={{ margin: '4px 0' }}>
+                        <strong>Año:</strong> {auto.anio}
+                      </p> 
+                      {auto.EnPromocion ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', margin: '4px 0' }}>
+                          <Text delete type="secondary" style={{ fontSize: '13px' }}>
+                            Antes: ${parseFloat(auto.precioDia).toFixed(2)}
+                          </Text>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <strong style={{ fontSize: '18px', color: '#ff4d4f' }}>
+                              ${parseFloat(auto.PrecioFinal).toFixed(2)} / día
+                            </strong>
+                            <Tag color="red" style={{ borderRadius: '10px' }}>
+                              -{auto.PorcentajeDescuento}% OFF
+                            </Tag>
+                          </div>
+                          <span style={{ fontSize: '11px', color: '#ff4d4f' }}>
+                            🔥 {auto.NombrePromocion}
+                          </span>
+                        </div>
+                      ) : (
+                        <p style={{ margin: '4px 0', fontSize: '18px', color: '#52c41a' }}>
+                          <strong>${parseFloat(auto.precioDia || 0).toFixed(2)}</strong> / día
+                        </p>
+                      )}
+                      {auto.transmisionNombre && (
+                        <Tag style={{ marginTop: '8px' }}>{auto.transmisionNombre}</Tag>
+                      )}
+                      {auto.capacidad && (
+                        <Tag>{auto.capacidad} pasajeros</Tag>
+                      )}
+                    </div>
+                  }
+                />
+              </Card>
+            </Col>
+          ))}
+        </Row>
       )}
-      {auto.TransmisionNombre && (
-        <Tag style={{ marginTop: '8px' }}>{auto.TransmisionNombre}</Tag>
-      )}
-      {auto.Capacidad && (
-        <Tag>{auto.Capacidad} pasajeros</Tag>
-      )}
-    </div>
-  }
-/>
-                </Card>
-              </Col>
-            ))}
-          </Row>
-        )}
 
       <Modal
-        title={autoActual ? `Editar ${autoActual.Marca} ${autoActual.Modelo}` : 'Crear Nuevo Vehículo'}
+        title={autoActual ? `Editar ${autoActual.marca} ${autoActual.modelo}` : 'Crear Nuevo Vehículo'}
         open={modalVisible}
         onOk={handleSubmit}
         onCancel={cerrarModal}
@@ -464,55 +517,59 @@ const handleSubmit = async () => {
         <Form form={form} layout="vertical">
           <Row gutter={16}>
             <Col span={8}>
-              <Form.Item name="Marca" label="Marca" rules={[{ required: true }]}>
+              <Form.Item name="Marca" label="Marca" rules={[{ required: true, message: 'La marca es requerida' }]}>
                 <Input placeholder="Ej: Toyota" />
               </Form.Item>
             </Col>
             <Col span={8}>
-            <Form.Item name="Modelo"label="Modelo"
-            rules={[
-            {
-              validator: (_, value) => {
-                const error = validateModelo(value);
-                return error ? Promise.reject(new Error(error)) : Promise.resolve();
-              }
-            }
-          ]}
-        >
-      <Input placeholder="Ej: Corolla" />
-    </Form.Item>
-
-
+              <Form.Item 
+                name="Modelo" 
+                label="Modelo"
+                rules={[
+                  { required: true, message: 'El modelo es requerido' },
+                  {
+                    validator: (_, value) => {
+                      const error = validateModelo(value);
+                      return error ? Promise.reject(new Error(error)) : Promise.resolve();
+                    }
+                  }
+                ]}
+              >
+                <Input placeholder="Ej: Corolla" />
+              </Form.Item>
             </Col>
             <Col span={8}>
-            <Form.Item name="Anio"label="Año"
-            rules={[
-              {
-                validator: (_, value) => {
-                  const error = validateAnio(value);
-                  return error ? Promise.reject(new Error(error)) : Promise.resolve();
-                }
-              }
-            ]}
-          >
+              <Form.Item 
+                name="Anio"
+                label="Año"
+                rules={[
+                  { required: true, message: 'El año es requerido' },
+                  {
+                    validator: (_, value) => {
+                      const error = validateAnio(value);
+                      return error ? Promise.reject(new Error(error)) : Promise.resolve();
+                    }
+                  }
+                ]}
+              >
+                <InputNumber placeholder="Ej: 2024" style={{ width: '100%' }} />
               </Form.Item>
             </Col>
           </Row>
 
           <Row gutter={16}>
             <Col span={8}>
-              <Form.Item name="IdCategoria" label="Categoría" rules={[{ required: true }]}>
+              <Form.Item name="IdCategoria" label="Categoría" rules={[{ required: true, message: 'Selecciona una categoría' }]}>
                 <Select placeholder="Selecciona categoría">
                   <Option value={1}>Sedán</Option>
                   <Option value={2}>SUV</Option>
-                   <Option value={3}>Deportivo</Option>
+                  <Option value={3}>Deportivo</Option>
                   <Option value={4}>Lujo</Option>
-
                 </Select>
               </Form.Item>
             </Col>
             <Col span={8}>
-              <Form.Item name="IdTransmision" label="Transmisión" rules={[{ required: true }]}>
+              <Form.Item name="IdTransmision" label="Transmisión" rules={[{ required: true, message: 'Selecciona una transmisión' }]}>
                 <Select placeholder="Tipo de transmisión">
                   <Option value={1}>Automática</Option>
                   <Option value={2}>Manual</Option>
@@ -520,7 +577,7 @@ const handleSubmit = async () => {
               </Form.Item>
             </Col>
             <Col span={8}>
-              <Form.Item name="Capacidad" label="Capacidad" rules={[{ required: true }]}>
+              <Form.Item name="Capacidad" label="Capacidad" rules={[{ required: true, message: 'La capacidad es requerida' }]}>
                 <InputNumber placeholder="5" min={2} max={15} style={{ width: '100%' }} addonAfter="pasajeros"/>
               </Form.Item>
             </Col>
@@ -528,8 +585,11 @@ const handleSubmit = async () => {
 
           <Row gutter={16}>
             <Col span={8}>
-              <Form.Item name="PrecioDia" label="Precio por día"
+              <Form.Item 
+                name="PrecioDia"
+                label="Precio por día"
                 rules={[
+                  { required: true, message: 'El precio es requerido' },
                   {
                     validator: (_, value) => {
                       const error = validatePrecio(value);
@@ -538,35 +598,42 @@ const handleSubmit = async () => {
                   }
                 ]}
               >
+                <InputNumber 
+                  placeholder="0.00" 
+                  min={0} 
+                  step={0.01} 
+                  style={{ width: '100%' }} 
+                  prefix="$" 
+                />
               </Form.Item>
-            </Col>   
+            </Col>
           </Row>
 
           <Row gutter={16}>
             <Col span={12}>
-            <Form.Item
-  name="Matricula"
-  label="Matrícula"
-  rules={[
-    {
-      validator: (_, value) => {
-        const error = validatePlate(value);
-        return error ? Promise.reject(new Error(error)) : Promise.resolve();
-      }
-    }
-  ]}
->
-  <Input
-    placeholder="ABC-1234"
-    onChange={(e) => {
-      form.setFieldValue('Matricula', e.target.value.toUpperCase());
-    }}
-  />
-</Form.Item>
-
+              <Form.Item
+                name="Matricula"
+                label="Matrícula"
+                rules={[
+                  { required: true, message: 'La matrícula es requerida' },
+                  {
+                    validator: (_, value) => {
+                      const error = validatePlate(value);
+                      return error ? Promise.reject(new Error(error)) : Promise.resolve();
+                    }
+                  }
+                ]}
+              >
+                <Input
+                  placeholder="ABC-1234"
+                  onChange={(e) => {
+                    form.setFieldValue('Matricula', e.target.value.toUpperCase());
+                  }}
+                />
+              </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="Estado" label="Estado" rules={[{ required: true }]}>
+              <Form.Item name="Estado" label="Estado" rules={[{ required: true, message: 'Selecciona un estado' }]}>
                 <Select placeholder="Estado del vehículo">
                   <Option value="Disponible">Disponible</Option>
                   <Option value="En Mantenimiento">En Mantenimiento</Option>
@@ -578,7 +645,7 @@ const handleSubmit = async () => {
 
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="IdSucursal" label="Sucursal" rules={[{ required: true }]}>
+              <Form.Item name="IdSucursal" label="Sucursal" rules={[{ required: true, message: 'La sucursal es requerida' }]}>
                 <InputNumber placeholder="1" min={1} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
@@ -588,12 +655,14 @@ const handleSubmit = async () => {
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item name="UrlImagen" label="URL de Imagen"
+
+          <Form.Item 
+            name="UrlImagen" 
+            label="URL de Imagen"
             rules={[
               {
                 validator: (_, value) => {
                   if (!value) return Promise.resolve();
-
                   const error = validateImageUrl(value);
                   return error ? Promise.reject(new Error(error)) : Promise.resolve();
                 }
@@ -608,6 +677,7 @@ const handleSubmit = async () => {
           </Form.Item>
         </Form>
       </Modal>
+
       <Modal
         title="Confirmar Eliminación"
         open={modalEliminarVisible}
@@ -626,9 +696,9 @@ const handleSubmit = async () => {
             </p>
             {autoAEliminar && (
               <p style={{ margin: '8px 0 0 0' }}>
-                Se eliminará permanentemente <strong>{autoAEliminar.Marca} {autoAEliminar.Modelo}</strong>
+                Se eliminará permanentemente <strong>{autoAEliminar.marca} {autoAEliminar.modelo}</strong>
                 <br />
-                ID: {autoAEliminar.IdVehiculo} | Año: {autoAEliminar.Anio}
+                ID: {autoAEliminar.idVehiculo} | Año: {autoAEliminar.anio}
               </p>
             )}
             <p style={{ margin: '8px 0 0 0', color: '#666' }}>
@@ -637,30 +707,31 @@ const handleSubmit = async () => {
           </div>
         </div>
       </Modal>
+
       <Modal
-        title={`Detalles - ${autoActual?.Marca || ''} ${autoActual?.Modelo || ''}`}
+        title={`Detalles - ${autoActual?.marca || ''} ${autoActual?.modelo || ''}`}
         open={detallesVisible}
         onCancel={cerrarDetalles}
         footer={[
           <Button key="close" onClick={cerrarDetalles}>Cerrar</Button>,
           userIsAdmin && (
-          <Button key="edit" type="primary" onClick={() => { 
-            cerrarDetalles(); 
-            abrirModal(autoActual); 
-          }}>
-            Editar Vehículo
-          </Button>
+            <Button key="edit" type="primary" onClick={() => { 
+              cerrarDetalles(); 
+              abrirModal(autoActual); 
+            }}>
+              Editar Vehículo
+            </Button>
           )
         ].filter(Boolean)}
         width={700}
       >
         {autoActual && (
           <div>
-            {autoActual.UrlImagen && (
+            {autoActual.urlImagen && (
               <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                 <img
-                  src={autoActual.UrlImagen}
-                  alt={`${autoActual.Marca} ${autoActual.Modelo}`}
+                  src={autoActual.urlImagen}
+                  alt={`${autoActual.marca} ${autoActual.modelo}`}
                   style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px' }}
                   onError={(e) => { e.target.src = 'https://via.placeholder.com/300x200?text=Sin+Imagen'; }}
                 />
@@ -670,22 +741,22 @@ const handleSubmit = async () => {
             <Row gutter={16}>
               <Col span={12}>
                 <h4>Información Básica</h4>
-                <p><strong>ID:</strong> {autoActual.IdVehiculo || 'N/A'}</p>
-                <p><strong>Marca:</strong> {autoActual.Marca || 'N/A'}</p>
-                <p><strong>Modelo:</strong> {autoActual.Modelo || 'N/A'}</p>
-                <p><strong>Año:</strong> {autoActual.Anio || 'N/A'}</p>
-                <p><strong>Matrícula:</strong> {autoActual.Matricula || 'N/A'}</p>
+                <p><strong>ID:</strong> {autoActual.idVehiculo || 'N/A'}</p>
+                <p><strong>Marca:</strong> {autoActual.marca || 'N/A'}</p>
+                <p><strong>Modelo:</strong> {autoActual.modelo || 'N/A'}</p>
+                <p><strong>Año:</strong> {autoActual.anio || 'N/A'}</p>
+                <p><strong>Matrícula:</strong> {autoActual.matricula || 'N/A'}</p>
               </Col>
 
               <Col span={12}>
                 <h4>Especificaciones</h4>
-                <p><strong>Categoría:</strong> {autoActual.CategoriaNombre || 'N/A'}</p>
-                <p><strong>Transmisión:</strong> {autoActual.TransmisionNombre || 'N/A'}</p>
-                <p><strong>Capacidad:</strong> {autoActual.Capacidad ? `${autoActual.Capacidad} pasajeros` : 'N/A'}</p>
+                <p><strong>Categoría:</strong> {autoActual.categoriaNombre || 'N/A'}</p>
+                <p><strong>Transmisión:</strong> {autoActual.transmisionNombre || 'N/A'}</p>
+                <p><strong>Capacidad:</strong> {autoActual.capacidad ? `${autoActual.capacidad} pasajeros` : 'N/A'}</p>
                 <p>
                   <strong>Estado:</strong> 
-                  <Tag color={autoActual.Estado === "Disponible" ? "green" : "red"} style={{ marginLeft: 8 }}>
-                    {autoActual.Estado || 'N/A'}
+                  <Tag color={autoActual.estado === "Disponible" ? "green" : "red"} style={{ marginLeft: 8 }}>
+                    {autoActual.estado || 'N/A'}
                   </Tag>
                 </p>
               </Col>
@@ -694,7 +765,7 @@ const handleSubmit = async () => {
             <Row gutter={16} style={{ marginTop: '16px' }}>
               <Col span={12}>
                 <h4>Precios</h4>
-                <p><strong>Precio/día:</strong> ${autoActual.PrecioDia ? parseFloat(autoActual.PrecioDia).toFixed(2) : '0.00'}</p>
+                <p><strong>Precio/día:</strong> ${autoActual.precioDia ? parseFloat(autoActual.precioDia).toFixed(2) : '0.00'}</p>
                 {autoActual.PorcentajeDescuento && autoActual.PorcentajeDescuento > 0 && (
                   <p><strong>Descuento:</strong> {autoActual.PorcentajeDescuento}%</p>
                 )}
@@ -702,7 +773,7 @@ const handleSubmit = async () => {
 
               <Col span={12}>
                 <h4>Ubicación</h4>
-                <p><strong>Sucursal:</strong> {autoActual.SucursalNombre || (autoActual.IdSucursal ? `ID: ${autoActual.IdSucursal}` : 'N/A')}</p>
+                <p><strong>Sucursal:</strong> {autoActual.sucursalNombre || (autoActual.idSucursal ? `ID: ${autoActual.idSucursal}` : 'N/A')}</p>
               </Col>
             </Row>
 

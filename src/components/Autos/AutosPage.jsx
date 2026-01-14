@@ -35,10 +35,10 @@ const AutosPage = () => {
   const loading = autosState?.loading || false;
   const error = autosState?.error || null;
  const cargarCarrito = () => {
-      const idUsuario = getUserId();
+      const IdUsuario = getUserId();
       // Solo cargamos el carrito si el usuario está logueado
-      if (idUsuario && fetchCarritos) { 
-          dispatch(fetchCarritos(idUsuario));
+      if (IdUsuario && fetchCarritos) { 
+          dispatch(fetchCarritos(IdUsuario));
       }
   };
   useEffect(() => {
@@ -84,8 +84,8 @@ const AutosPage = () => {
 
   // 🆕 LÓGICA CORREGIDA PARA AGREGAR AL CARRITO (CON VERIFICACIÓN DE DUPLICADOS)
   const handleAgregarCarrito = async (idVehiculo) => {
-    const idUsuario = getUserId(); 
-    if (!idUsuario) {
+    const IdUsuario = getUserId(); 
+    if (!IdUsuario) {
         console.error("Error lógico: handleAgregarCarrito llamado sin usuario");
         return false; 
     }
@@ -110,7 +110,7 @@ const AutosPage = () => {
 
     try {
       const respuesta = await dispatch(createCarritoThunk({
-          IdUsuario: idUsuario, 
+          IdUsuario: IdUsuario, 
           IdVehiculo: idVehiculoNum, 
       })).unwrap();
       

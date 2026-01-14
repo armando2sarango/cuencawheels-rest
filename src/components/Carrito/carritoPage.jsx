@@ -143,9 +143,9 @@ const CarritoPage = () => {
     };
 
     const abrirModalReserva = () => {
-        const idUsuario = getUserId();
+        const IdUsuario = getUserId();
         
-        if (!idUsuario) {
+        if (!IdUsuario) {
             api.warning({ 
                 message: 'Inicio de Sesión Requerido', 
                 description: 'Debes estar logueado para crear una reserva.',
@@ -186,13 +186,13 @@ const CarritoPage = () => {
         try {
             const values = await formFechas.validateFields();
             const [inicio, fin] = values.fechas;
-            const idUsuario = getUserId();
+            const IdUsuario = getUserId();
             
             setProcesando(true);
 
             try {
                 const payloadReserva = {
-                    IdUsuario: parseInt(idUsuario),
+                    IdUsuario: parseInt(IdUsuario),
                     IdVehiculo: vehiculoSeleccionado.IdVehiculo,
                     FechaInicio: inicio.format('YYYY-MM-DDTHH:mm:ss'),
                     FechaFin: fin.format('YYYY-MM-DDTHH:mm:ss'),
@@ -250,7 +250,7 @@ const CarritoPage = () => {
 
             {/* MODAL DE DETALLES */}
             <Modal
-                title={`Detalles - ${vehiculoDetalle?.Marca || ''} ${vehiculoDetalle?.Modelo || ''}`}
+                title={`Detalles - ${vehiculoDetalle?.marca || ''} ${vehiculoDetalle?.Modelo || ''}`}
                 open={detallesVisible}
                 onCancel={cerrarDetalles}
                 footer={[<Button key="close" onClick={cerrarDetalles}>Cerrar</Button>]}
@@ -260,7 +260,7 @@ const CarritoPage = () => {
                     <div>
                         <Row gutter={16}>
                             <Col span={12}>
-                                <p><strong>Marca:</strong> {vehiculoDetalle.Marca}</p>
+                                <p><strong>Marca:</strong> {vehiculoDetalle.marca}</p>
                                 <p><strong>Modelo:</strong> {vehiculoDetalle.Modelo}</p>
                                 <p><strong>Precio/Día:</strong> ${vehiculoDetalle.PrecioDia}</p>
                             </Col>

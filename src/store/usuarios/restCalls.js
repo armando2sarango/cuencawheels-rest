@@ -2,14 +2,17 @@ import { makeRequest, HttpMethod } from '../../services/restCall';
 export async function getUsuarios() {
   try {
     const response = await makeRequest(HttpMethod.GET, '/usuarios');
-
     if (!response.success) return [];
-    return response.data?.data || [];
+    return Array.isArray(response.data) 
+      ? response.data 
+      : (response.data?.data || []);
 
-  } catch {
+  } catch (error) {
+    console.error("Error en getUsuarios API:", error);
     return [];
   }
 }
+
 export async function getUsuarioById(id) {
   try {
     const response = await makeRequest(HttpMethod.GET, `/usuarios/${id}`);

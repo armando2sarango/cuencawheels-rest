@@ -12,56 +12,61 @@ const LoginPage = () => {
   const dispatch = useDispatch();
   const [api, contextHolder] = notification.useNotification();
   const handleLogin = async (email, password, rememberMe) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const credentials = {
-        Email: email,
-        Contrasena: password
-      };
-      const respuestaApi = await dispatch(loginThunk(credentials)).unwrap();
+    setLoading(true);
+    setError(null);
+    try {
+      const credentials = {
+        Email: email,
+        Contrasena: password
+      };
 
-      if (!respuestaApi) {
-        throw new Error('Credenciales incorrectas.');
-      }
-      const usuario = respuestaApi.data || respuestaApi;
+      const respuestaApi = await dispatch(loginThunk(credentials)).unwrap();
 
-      if (!usuario.IdUsuario && !usuario.idUsuario) {
-          throw new Error('Error: La respuesta del servidor no contiene un ID de usuario válido.');
-      }
-      let carritoId = null;
-      const links = respuestaApi.links || usuario.Links || [];
-      
-      if (Array.isArray(links)) {
-        const linkCarrito = links.find(l => l.rel === 'carrito');
-        if (linkCarrito) {
-            carritoId = null; 
-        }
-      }
-      setAuth({
-        IdUsuario: usuario.IdUsuario || usuario.idUsuario,
-        Email:     usuario.Email || usuario.email,
-        Nombre:    usuario.Nombre || usuario.nombre,
-        Apellido:  usuario.Apellido || usuario.apellido,
-        Rol:       usuario.Rol || usuario.rol,
-        carritoId: carritoId 
-      });
-      if (rememberMe) {
-        localStorage.setItem('rememberMe', 'true');
-      } else {
-        localStorage.removeItem('rememberMe');
-      }
-      api.success({
-        message: 'Ingreso correcto',
-        description: `¡Bienvenido ${usuario.Nombre} ${usuario.Apellido}!`,
-        placement: 'topRight',
-        duration: 3,
-      });
-      setTimeout(() => {
-        navigate('/home');
-      }, 500);
+      if (!respuestaApi) {
+        throw new Error('Credenciales incorrectas.');
+      }
 
-    } catch (err) {
+      // 2. Extraer usuario (En .NET Core suele venir directo, sin .data)
+      const usuario = respuestaApi.data || respuestaApi;
+
+      // 3. Buscar el ID (Probamos minúscula 'idUsuario' y mayúscula 'IdUsuario')
+      const idUsuarioFinal = usuario.idUsuario || usuario.IdUsuario;
+const nombreFinal = usuario.nombre || usuario.Nombre;
+const rolFinal = usuario.rol || usuario.Rol;
+      if (!idUsuarioFinal) {
+          throw new Error('Error: El servidor no devolvió un ID de usuario válido.');
+      }
+
+      // 4. Mapear datos al servicio de Auth (Normalizamos a lo que espera tu App)
+      setAuth({
+  IdUsuario: idUsuarioFinal,
+        Nombre: nombreFinal,
+                Apellido:  usuario.apellido || usuario.Apellido,
+        Rol: rolFinal,
+        Email: usuario.email || usuario.Email,
+        carritoId: null // Se cargará en la siguiente página
+
+      });
+
+      if (rememberMe) {
+        localStorage.setItem('rememberMe', 'true');
+      } else {
+        localStorage.removeItem('rememberMe');
+      }
+
+      api.success({
+        message: 'Ingreso correcto',
+        description: `¡Bienvenido ${usuario.nombre || usuario.Nombre}!`,
+        placement: 'topRight',
+        duration: 3,
+      });
+
+      setTimeout(() => {
+        navigate('/home');
+      }, 500);
+
+    } catch (err) {
+
       console.error('Error en login:', err);
       const errorMessage = typeof err === 'string' ? err : (err.message || 'Error al iniciar sesión');
       setError(errorMessage);
