@@ -31,7 +31,7 @@ const CarritoView = ({
     },
     {
       title: 'Vehículo',
-      dataIndex: 'urlImagen', // 👈 Cambiar a minúscula
+      dataIndex: 'urlImagen', 
       key: 'imagen',
       width: 130,
       render: (url, record) => (
@@ -79,7 +79,7 @@ const CarritoView = ({
   align: 'right',
   render: (_, record) => {
     // 🔵 CORRECCIÓN: Mapeo correcto de precios
-    const precioOriginal = record.precioDia || record.precioNormal || record.PrecioDia || 0;
+   const precioOriginal = record.Subtotal || record.precioDia || record.precioNormal || record.PrecioDia || 0;
     const precioActual = record.precioActual || record.PrecioFinal || null;
     const precioFinal = precioActual || precioOriginal;
     const enPromocion = record.idPromocion && record.porcentajeDescuento;

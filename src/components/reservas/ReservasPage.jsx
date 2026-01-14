@@ -4,7 +4,7 @@ import { notification, Modal, Button, Table, Tag, Empty, Typography, Form, Input
 import { FilePdfOutlined, CreditCardOutlined } from '@ant-design/icons';
 import ReservasView from './ReservasView'; 
 import { fetchReservas, fetchReservasIdUsuario, deleteReservaThunk, updateEstadoReservaThunk, createReservaThunk, updateReservaThunk,createHoldThunk  } from '../../store/reservas/thunks';
-import { fetchFacturasByUsuarioThunk, createFacturaThunk } from '../../store/facturas/thunks';
+import { fetchFacturasByUsuarioThunk, createFacturaThunk,fetchFacturas } from '../../store/facturas/thunks';
 import { updateVehiculoThunk, fetchVehiculoById, fetchVehiculos } from '../../store/autos/thunks';
 import { fetchUsuarios } from '../../store/usuarios/thunks';
 import { createPagoThunk } from '../../store/pagos/thunks'; 
@@ -92,23 +92,92 @@ const handleProcesarPago = async () => {
             duration: 0 
         });
 
-        // 🔵 PAYLOAD ACTUALIZADO según la nueva estructura del backend
         const payloadPago = {
             IdReserva: reservaAPagar.IdReserva,
-            Metodo: "Transferencia", // o "Tarjeta", según tu lógica
+            Metodo: "Transferencia",
             Monto: parseFloat(reservaAPagar.Total),
             FechaPago: new Date().toISOString(),
-            ReferenciaExterna: `REF-${Date.now()}`, // Generar referencia única
-            Estado: "Procesado", // o "Pendiente", según tu flujo
+            ReferenciaExterna: `REF-${Date.now()}`,
+            Estado: "Procesado",
             CuentaCliente: values.cuentaUsuario,
             CuentaComercio: CUENTA_EMPRESA
         };
 
         console.log('📤 Enviando pago:', payloadPago);
 
+        // 🔵 PASO 1: Crear el pago
         await dispatch(createPagoThunk(payloadPago)).unwrap();
+        console.log('✅ Pago creado exitosamente');
         
-        // Actualizar vehículo a "Rentado"
+        // 🔵 PASO 2: Cambiar estado de la reserva a "Confirmada"
+        try {
+            await dispatch(updateEstadoReservaThunk({
+                id: reservaAPagar.IdReserva, 
+                estado: 'Confirmada'
+            })).unwrap();
+            console.log('✅ Estado de reserva cambiado a Confirmada');
+        } catch (errEstado) {
+            console.error("Error actualizando estado de reserva:", errEstado);
+            throw new Error('No se pudo confirmar la reserva');
+        }
+
+        // 🔵 PASO 3: Crear la factura
+// 🔵 PASO 3: Crear la factura
+try {
+    const fechaActual = new Date().toISOString();
+    const dias = dayjs(reservaAPagar.FechaFin).diff(dayjs(reservaAPagar.FechaInicio), 'day') || 1;
+    const subtotalSinIva = reservaAPagar.Total / 1.15;
+    const iva = reservaAPagar.Total - subtotalSinIva;
+    
+    const facturaData = {
+        IdReserva: reservaAPagar.IdReserva,
+        IdUsuario: reservaAPagar.IdUsuario || parseInt(idUsuarioSesion),
+        UriFactura: "",
+        FechaEmision: fechaActual,
+        ValorTotal: parseFloat(reservaAPagar.Total),
+        Descripcion: `Renta de vehículo ${reservaAPagar.VehiculoNombre || reservaAPagar.Marca} por ${dias} día(s)`,
+        Detalles: [
+            {
+                IdDetalle: 0,
+                IdFactura: 0,
+                Descripcion: `Renta ${reservaAPagar.VehiculoNombre || reservaAPagar.Marca} (${dayjs(reservaAPagar.FechaInicio).format('DD/MM/YYYY')} - ${dayjs(reservaAPagar.FechaFin).format('DD/MM/YYYY')})`,
+                Cantidad: dias,
+                PrecioUnitario: parseFloat(subtotalSinIva / dias),
+                Subtotal: parseFloat(subtotalSinIva)
+            },
+            {
+                IdDetalle: 0,
+                IdFactura: 0,
+                Descripcion: "IVA 15%",
+                Cantidad: 1,
+                PrecioUnitario: parseFloat(iva),
+                Subtotal: parseFloat(iva)
+            }
+        ]
+    };
+
+    console.log('📤 Creando factura:', facturaData);
+    const facturaCreada = await dispatch(createFacturaThunk(facturaData)).unwrap();
+    console.log('✅ Factura creada:', facturaCreada);
+    
+    // 🆕 Guardar el IdFactura en la reserva para referencia futura
+    const idFactura = facturaCreada?.IdFactura || facturaCreada?.idFactura;
+    if (idFactura) {
+        console.log('✅ IdFactura guardado:', idFactura);
+        // Opcional: Podrías actualizar la reserva con el IdFactura si tu backend lo soporta
+    }
+        } catch (errFactura) {
+            console.error("Error creando factura:", errFactura);
+            // No lanzamos error porque el pago ya se procesó
+            api.warning({
+                message: 'Factura Pendiente',
+                description: 'El pago se procesó correctamente, pero hubo un problema generando la factura. Contacta a soporte.',
+                placement: 'topRight',
+                duration: 6,
+            });
+        }
+
+        // 🔵 PASO 4: Actualizar vehículo a "Rentado"
         try {
             const vehiculoCompleto = await dispatch(fetchVehiculoById(reservaAPagar.IdVehiculo)).unwrap();
             if (vehiculoCompleto) {
@@ -116,6 +185,7 @@ const handleProcesarPago = async () => {
                     id: reservaAPagar.IdVehiculo, 
                     body: { ...vehiculoCompleto, Estado: 'Rentado' } 
                 })).unwrap();
+                console.log('✅ Vehículo actualizado a Rentado');
             }
         } catch (errVeh) {
             console.error("Error actualizando vehículo:", errVeh);
@@ -123,7 +193,7 @@ const handleProcesarPago = async () => {
 
         api.success({ 
             message: '¡Pago Exitoso!', 
-            description: 'Tu reserva ha sido confirmada y la factura generada correctamente.',
+            description: 'Tu reserva ha sido confirmada y la factura se ha generado correctamente.',
             placement: 'topRight',
             key: 'pago_proc', 
             duration: 5 
@@ -192,27 +262,40 @@ const handleProcesarPago = async () => {
     };
 
 
-    const handleVerFacturas = async (idReserva, idUsuarioParam) => {
-        try {
-            const idBusqueda = esAdministrador ? (idUsuarioParam || idUsuarioSesion) : idUsuarioSesion;
-            const resp = await dispatch(fetchFacturasByUsuarioThunk(idBusqueda)).unwrap();
+const handleVerFacturas = async (idReserva, idUsuarioParam) => {
+    try {
+        const todasLasFacturas = await dispatch(fetchFacturas()).unwrap();
+        console.log('🔍 Todas las facturas recibidas:', todasLasFacturas);
+        
+        const filtradas = Array.isArray(todasLasFacturas) 
+            ? todasLasFacturas.filter(f => f.IdReserva === idReserva) 
+            : [];
+        
+        console.log('🔍 Facturas filtradas para reserva', idReserva, ':', filtradas);
 
-            const filtradas = Array.isArray(resp) 
-                ? resp.filter(f => f.IdReserva === idReserva) 
-                : [];
-
-            setListaFacturas(filtradas);
-            setModalFacturasVisible(true);
-        } catch (error) {
-            api.error({
-                message: 'Error al Cargar Facturas',
-                description: getErrorMessage(error), 
+        if (filtradas.length === 0) {
+            api.warning({
+                message: 'Sin Facturas',
+                description: 'No se encontraron facturas para esta reserva.',
                 placement: 'topRight',
-                duration: 4,
+                duration: 3,
             });
-            console.error(error);
+            return;
         }
-    };
+
+        setListaFacturas(filtradas);
+        setModalFacturasVisible(true);
+        
+    } catch (error) {
+        api.error({
+            message: 'Error al Cargar Facturas',
+            description: getErrorMessage(error), 
+            placement: 'topRight',
+            duration: 4,
+        });
+        console.error('❌ Error cargando facturas:', error);
+    }
+};
 
 const handleCrearReservaAdmin = async (dto) => {
     try {
@@ -345,37 +428,57 @@ const handleCrearReservaAdmin = async (dto) => {
             />
 
             {/* Modal de Facturas */}
-            <Modal
-                title="Documentos de la Reserva"
-                open={modalFacturasVisible}
-                onCancel={() => setModalFacturasVisible(false)}
-                footer={[<Button key="c" onClick={() => setModalFacturasVisible(false)}>Cerrar</Button>]}
-                width={700}
-            >
-                <Table
-                    dataSource={listaFacturas || []}
-                    rowKey="IdFactura"
-                    pagination={false}
-                    locale={{ emptyText: <Empty description="No hay facturas." /> }}
-                    columns={[
-                        { title: 'Fecha', dataIndex: 'FechaEmision', render: f => dayjs(f).format('DD/MM/YYYY HH:mm') },
-                        { title: 'Monto', dataIndex: 'ValorTotal', render: v => `$${parseFloat(v).toFixed(2)}` },
-                        { 
-                            title: 'Factura', 
-                            dataIndex: 'IdFactura', 
-                            render: (idFactura) => (
-                                <Button 
-                                    type="primary" 
-                                    icon={<FilePdfOutlined />}
-                                    onClick={() => window.open(`/factura/ver?id=${idFactura}`, '_blank')}
-                                >
-                                    Ver Factura
-                                </Button>
-                            )
-                        }
-                    ]}
-                />
-            </Modal>
+{/* Modal de Facturas */}
+<Modal
+    title="Documentos de la Reserva"
+    open={modalFacturasVisible}
+    onCancel={() => setModalFacturasVisible(false)}
+    footer={[<Button key="c" onClick={() => setModalFacturasVisible(false)}>Cerrar</Button>]}
+    width={700}
+>
+    <Table
+        dataSource={listaFacturas || []}
+        rowKey="IdFactura"
+        pagination={false}
+        locale={{ emptyText: <Empty description="No hay facturas." /> }}
+        columns={[
+            { 
+                title: 'Fecha', 
+                dataIndex: 'FechaEmision', 
+                render: (f) => f ? dayjs(f).format('DD/MM/YYYY HH:mm') : 'N/A'
+            },
+            { 
+                title: 'Monto', 
+                dataIndex: 'ValorTotal', 
+                render: (v) => `$${parseFloat(v || 0).toFixed(2)}`
+            },
+            { 
+                title: 'Factura', 
+                key: 'factura',
+                render: (_, record) => {
+                    console.log('🔍 Record de factura:', record);
+                    
+                    const urlFactura = record.UriFactura || record.uriFactura;
+                    
+                    if (!urlFactura) {
+                        return <span style={{ color: '#999' }}>⏳ Generando...</span>;
+                    }
+                    
+                    return (
+                        <Button 
+                            type="primary" 
+                            icon={<FilePdfOutlined />}
+                            onClick={() => window.open(urlFactura, '_blank')}
+                            style={{ backgroundColor: '#ff4d4f', borderColor: '#ff4d4f' }}
+                        >
+                            Ver PDF
+                        </Button>
+                    );
+                }
+            }
+        ]}
+    />
+</Modal>
 
             {/* Modal de Pago */}
             <Modal

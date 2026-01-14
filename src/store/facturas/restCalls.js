@@ -28,7 +28,7 @@ export async function getFacturasByUsuario(idUsuario) {
 
 export async function getFacturaHtmlContent(id) {
   try {
-    const response = await makeRequest(HttpMethod.GET, `/facturas/${id}/html`);
+    const response = await makeRequest(HttpMethod.GET, `/facturas/${id}`);
     
     if (!response.success) {
       throw new Error(response.error || 'Error al obtener el contenido HTML.');

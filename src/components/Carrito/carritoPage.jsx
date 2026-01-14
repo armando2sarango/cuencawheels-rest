@@ -65,11 +65,12 @@ useEffect(() => {
         setDiasRenta(diasReales);
 
         // 🔵 CORRECCIÓN: Mapeo correcto del precio
-        const precioDia = vehiculoSeleccionado.precioDia || 
-                         vehiculoSeleccionado.precioNormal || 
-                         vehiculoSeleccionado.precioActual ||
-                         vehiculoSeleccionado.PrecioDia || 
-                         vehiculoSeleccionado.PrecioPorDia || 0;
+const precioDia = vehiculoSeleccionado.precioDia || 
+                 vehiculoSeleccionado.Subtotal ||
+                 vehiculoSeleccionado.precioNormal || 
+                 vehiculoSeleccionado.precioActual ||
+                 vehiculoSeleccionado.PrecioDia || 
+                 vehiculoSeleccionado.PrecioPorDia || 0;
         
         console.log('🔍 Precio seleccionado:', precioDia, 'Vehículo:', vehiculoSeleccionado);
         
@@ -113,20 +114,33 @@ useEffect(() => {
         }
     };
 
-    const handleSeleccionarVehiculo = (item) => {
-        if (vehiculoSeleccionado?.IdItem === item.IdItem) {
-            setVehiculoSeleccionado(null);
-        } else {
-            setVehiculoSeleccionado(item);
-        }
-    };
+const handleSeleccionarVehiculo = async (item) => {
+  if (vehiculoSeleccionado?.IdItem === item.IdItem) {
+    setVehiculoSeleccionado(null);
+    return;
+  }
 
-    const verDetalles = async (idVehiculo) => {
-        setCargandoDetalle(true);
-        setDetallesVisible(true);
-        try {
-            const vehiculo = await dispatch(fetchVehiculoById(idVehiculo)).unwrap();
-            setVehiculoDetalle(vehiculo);
+  const vehiculo = await dispatch(fetchVehiculoById(item.IdVehiculo)).unwrap();
+  
+  console.log('🔍 Vehículo API:', vehiculo);
+  console.log('🔍 Item del carrito:', item);
+
+  setVehiculoSeleccionado({
+    ...item,
+    precioDia: vehiculo.precioDia || vehiculo.PrecioDia || item.Subtotal,
+    marca: vehiculo.marca || item.Marca,
+    modelo: vehiculo.modelo || vehiculo.Modelo || item.Modelo
+  });
+};
+
+
+const verDetalles = async (idVehiculo) => {
+    setCargandoDetalle(true);
+    setDetallesVisible(true);
+    try {
+        const vehiculo = await dispatch(fetchVehiculoById(idVehiculo)).unwrap();
+        console.log('🔍 Vehículo cargado:', vehiculo);
+        setVehiculoDetalle(vehiculo);
         } catch (error) {
             api.error({ 
                 message: 'Error al Cargar Detalles', 
@@ -289,29 +303,34 @@ useEffect(() => {
             />
 
             {/* MODAL DE DETALLES */}
-            <Modal
-                title={`Detalles - ${vehiculoDetalle?.marca || ''} ${vehiculoDetalle?.Modelo || ''}`}
-                open={detallesVisible}
-                onCancel={cerrarDetalles}
-                footer={[<Button key="close" onClick={cerrarDetalles}>Cerrar</Button>]}
-                width={700}
-            >
-                {cargandoDetalle ? <p>Cargando...</p> : vehiculoDetalle && (
-                    <div>
-                        <Row gutter={16}>
-                            <Col span={12}>
-                                <p><strong>Marca:</strong> {vehiculoDetalle.marca}</p>
-                                <p><strong>Modelo:</strong> {vehiculoDetalle.Modelo}</p>
-                                <p><strong>Precio/Día:</strong> ${vehiculoDetalle.PrecioDia}</p>
-                            </Col>
-                            <Col span={12}>
-                                <img src={vehiculoDetalle.urlImagen} alt="auto" style={{width:'100%', borderRadius:8}}/>
-                            </Col>
-                        </Row>
-                        <p>{vehiculoDetalle.Descripcion}</p>
-                    </div>
-                )}
-            </Modal>
+<Modal
+    title={`Detalles - ${vehiculoDetalle?.marca || vehiculoDetalle?.Marca || ''} ${vehiculoDetalle?.modelo || vehiculoDetalle?.Modelo || ''}`}
+    open={detallesVisible}
+    onCancel={cerrarDetalles}
+    footer={[<Button key="close" onClick={cerrarDetalles}>Cerrar</Button>]}
+    width={700}
+>
+    {cargandoDetalle ? <p>Cargando...</p> : vehiculoDetalle && (
+        <div>
+            <Row gutter={16}>
+                <Col span={12}>
+                    <p><strong>Marca:</strong> {vehiculoDetalle.marca || vehiculoDetalle.Marca || 'N/A'}</p>
+                    <p><strong>Modelo:</strong> {vehiculoDetalle.modelo || vehiculoDetalle.Modelo || 'N/A'}</p>
+                    <p><strong>Precio/Día:</strong> ${vehiculoDetalle.precioDia || vehiculoDetalle.PrecioDia || vehiculoDetalle.precioNormal || 0}</p>
+                </Col>
+                <Col span={12}>
+                    <img 
+                        src={vehiculoDetalle.urlImagen || vehiculoDetalle.UrlImagen || 'https://via.placeholder.com/400x300?text=Sin+Imagen'} 
+                        alt="auto" 
+                        style={{width:'100%', borderRadius:8, maxHeight: '200px', objectFit: 'cover'}}
+                        onError={(e) => { e.target.src = 'https://via.placeholder.com/400x300?text=Sin+Imagen'; }}
+                    />
+                </Col>
+            </Row>
+            <p style={{marginTop: 16}}>{vehiculoDetalle.descripcion || vehiculoDetalle.Descripcion || 'Sin descripción disponible'}</p>
+        </div>
+    )}
+</Modal>
 
             {/* MODAL DE FECHAS */}
             <Modal
