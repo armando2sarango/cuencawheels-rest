@@ -34,21 +34,23 @@ const AutosPage = () => {
   const esAdministrador = isAdmin(); 
   const loading = autosState?.loading || false;
   const error = autosState?.error || null;
-const cargarCarrito = useCallback(() => {
-  const idUsuario = getUserId();
-  if (idUsuario) {
-    dispatch(fetchCarritos(idUsuario));
-  }
-}, [dispatch]);
-useEffect(() => {
-  cargarVehiculos();
-  cargarCarrito();
-}, [cargarVehiculos, cargarCarrito]);
+ const cargarCarrito = () => {
+      const idUsuario = getUserId();
+      // Solo cargamos el carrito si el usuario está logueado
+      if (idUsuario && fetchCarritos) { 
+          dispatch(fetchCarritos(idUsuario));
+      }
+  };
+  useEffect(() => {
+    cargarVehiculos();
+    // 🆕 Cargar ítems del carrito al montar la página para tener la lista actual
+    cargarCarrito();
+  }, [dispatch]); // Dependencia solo en dispatch para evitar loops
 
 
-const cargarVehiculos = useCallback(() => {
-  dispatch(fetchVehiculos());
-}, [dispatch]);
+  const cargarVehiculos = () => {
+    dispatch(fetchVehiculos());
+  };
 
   const getErrorMessage = (error) => {
     let msg = 'Error desconocido.';
