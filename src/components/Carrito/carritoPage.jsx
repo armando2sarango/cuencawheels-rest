@@ -138,21 +138,34 @@ const verDetalles = async (idVehiculo) => {
     setCargandoDetalle(true);
     setDetallesVisible(true);
     try {
+        // 🔵 Buscar el item del carrito para obtener la imagen
+        const itemCarrito = items.find(item => 
+            (item.IdVehiculo || item.idVehiculo) === idVehiculo
+        );
+        
         const vehiculo = await dispatch(fetchVehiculoById(idVehiculo)).unwrap();
-        console.log('🔍 Vehículo cargado:', vehiculo);
-        setVehiculoDetalle(vehiculo);
-        } catch (error) {
-            api.error({ 
-                message: 'Error al Cargar Detalles', 
-                description: getErrorMessage(error),
-                placement: 'topRight',
-                duration: 4,
-            });
-            setDetallesVisible(false);
-        } finally {
-            setCargandoDetalle(false);
-        }
-    };
+        console.log('🔍 Vehículo API:', vehiculo);
+        console.log('🔍 Item del carrito:', itemCarrito);
+        
+        // 🔵 Combinar datos del API con los datos del carrito
+        setVehiculoDetalle({
+            ...vehiculo,
+            urlImagen: vehiculo.urlImagen || itemCarrito?.urlImagen || 'https://via.placeholder.com/400x300?text=Sin+Imagen',
+            precioDia: vehiculo.precioDia || itemCarrito?.Subtotal || 0
+        });
+        
+    } catch (error) {
+        api.error({ 
+            message: 'Error al Cargar Detalles', 
+            description: getErrorMessage(error),
+            placement: 'topRight',
+            duration: 4,
+        });
+        setDetallesVisible(false);
+    } finally {
+        setCargandoDetalle(false);
+    }
+};
 
     const cerrarDetalles = () => {
         setDetallesVisible(false);
@@ -320,7 +333,7 @@ const verDetalles = async (idVehiculo) => {
                 </Col>
                 <Col span={12}>
                     <img 
-                        src={vehiculoDetalle.urlImagen || vehiculoDetalle.UrlImagen || 'https://via.placeholder.com/400x300?text=Sin+Imagen'} 
+                        src={vehiculoDetalle.urlImagen || vehiculoDetalle.urlImagen || 'https://via.placeholder.com/400x300?text=Sin+Imagen'} 
                         alt="auto" 
                         style={{width:'100%', borderRadius:8, maxHeight: '200px', objectFit: 'cover'}}
                         onError={(e) => { e.target.src = 'https://via.placeholder.com/400x300?text=Sin+Imagen'; }}

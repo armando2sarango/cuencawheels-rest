@@ -30,24 +30,6 @@ const CarritoView = ({
       ),
     },
     {
-      title: 'Vehículo',
-      dataIndex: 'urlImagen', 
-      key: 'imagen',
-      width: 130,
-      render: (url, record) => (
-        <div style={{ textAlign: 'center' }}>
-            <Image 
-                width={100} 
-                src={url || 'https://via.placeholder.com/150?text=Auto'} 
-                fallback="https://via.placeholder.com/150?text=Auto" 
-                alt={record.VehiculoNombre || record.marca} // 👈 Agregar fallback
-                style={{ borderRadius: '8px', objectFit: 'cover', height: '60px' }}
-                preview={false}
-            />
-        </div>
-      ),
-    },
-    {
       title: 'Información',
       key: 'detalles',
       render: (_, record) => (

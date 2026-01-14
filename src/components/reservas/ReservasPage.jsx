@@ -378,35 +378,58 @@ const handleCrearReservaAdmin = async (dto) => {
             });
     };
 
-    const handleCambiarEstado = async (id, estado, registro) => {
-        try {
-            await dispatch(updateEstadoReservaThunk({id, estado})).unwrap();
-            
-            // Lógica para liberar el vehículo
-            if(estado === 'Finalizada' || estado === 'Rechazada' || estado === 'Cancelada') {
+const handleCambiarEstado = async (id, estado, registro) => {
+    try {
+        await dispatch(updateEstadoReservaThunk({id, estado})).unwrap();
+        
+        // Lógica para liberar el vehículo
+        if(estado === 'Finalizada' || estado === 'Rechazada' || estado === 'Cancelada') {
+            try {
                 const v = await dispatch(fetchVehiculoById(registro.IdVehiculo)).unwrap();
-                if(v) await dispatch(updateVehiculoThunk({id: v.IdVehiculo, body: {...v, Estado: 'Disponible'}})).unwrap();
+                console.log('🔍 Vehículo obtenido:', v);
+                
+                if(v) {
+                    // 🔵 CORRECCIÓN: Usar minúscula idVehiculo
+                    const idVeh = v.idVehiculo || v.IdVehiculo;
+                    
+                    await dispatch(updateVehiculoThunk({
+                        id: idVeh, 
+                        body: {...v, estado: 'Disponible'} // 🔵 También minúscula en estado
+                    })).unwrap();
+                    
+                    console.log('✅ Vehículo liberado correctamente');
+                }
+            } catch (errVeh) {
+                console.error('❌ Error liberando vehículo:', errVeh);
+                // No lanzamos error porque el estado de la reserva ya cambió
+                api.warning({
+                    message: 'Vehículo No Liberado',
+                    description: 'El estado de la reserva cambió, pero no se pudo liberar el vehículo automáticamente.',
+                    placement: 'topRight',
+                    duration: 4,
+                });
             }
-            
-            api.success({
-                message: 'Estado Actualizado',
-                description: `El estado de la reserva ha sido cambiado a: ${estado}`,
-                placement: 'topRight',
-                duration: 3,
-            });
-            
-            cargarDatos();
-            return true;
-        } catch (error) { 
-            api.error({
-                message: 'Error al Cambiar Estado',
-                description: getErrorMessage(error),
-                placement: 'topRight',
-                duration: 4,
-            });
-            return false; 
         }
-    };
+        
+        api.success({
+            message: 'Estado Actualizado',
+            description: `El estado de la reserva ha sido cambiado a: ${estado}`,
+            placement: 'topRight',
+            duration: 3,
+        });
+        
+        cargarDatos();
+        return true;
+    } catch (error) { 
+        api.error({
+            message: 'Error al Cambiar Estado',
+            description: getErrorMessage(error),
+            placement: 'topRight',
+            duration: 4,
+        });
+        return false; 
+    }
+};
 
     return (
         <>
