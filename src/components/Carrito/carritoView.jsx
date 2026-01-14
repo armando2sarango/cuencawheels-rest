@@ -31,7 +31,7 @@ const CarritoView = ({
     },
     {
       title: 'Vehículo',
-      dataIndex: 'UrlImagen', 
+      dataIndex: 'urlImagen', // 👈 Cambiar a minúscula
       key: 'imagen',
       width: 130,
       render: (url, record) => (
@@ -40,7 +40,7 @@ const CarritoView = ({
                 width={100} 
                 src={url || 'https://via.placeholder.com/150?text=Auto'} 
                 fallback="https://via.placeholder.com/150?text=Auto" 
-                alt={record.VehiculoNombre}
+                alt={record.VehiculoNombre || record.marca} // 👈 Agregar fallback
                 style={{ borderRadius: '8px', objectFit: 'cover', height: '60px' }}
                 preview={false}
             />
@@ -53,46 +53,63 @@ const CarritoView = ({
       render: (_, record) => (
         <Space direction="vertical" size={0}>
           <Text strong style={{ fontSize: '16px' }}>
-            {record.VehiculoNombre || record.Nombre || 'Vehículo'}
+            {/* 👇 Usar minúsculas y agregar fallbacks */}
+            {record.VehiculoNombre || `${record.marca} ${record.modelo}` || 'Vehículo'}
           </Text>
           <Text type="secondary">
-            {record.Marca} {record.Modelo}
+            {/* 👇 Soportar ambas variantes */}
+            {record.Marca || record.marca} {record.Modelo || record.modelo}
           </Text>
-          {record.CategoriaNombre && <Tag color="blue">{record.CategoriaNombre}</Tag>}
-          {record.EnPromocion && (
+          {/* 👇 Usar minúscula */}
+          {(record.CategoriaNombre || record.categoriaNombre) && (
+            <Tag color="blue">{record.CategoriaNombre || record.categoriaNombre}</Tag>
+          )}
+          {/* 👇 Verificar promoción */}
+          {(record.EnPromocion || record.idPromocion) && record.porcentajeDescuento && (
               <Tag color="red" style={{marginTop: 4, fontWeight: 'bold'}}>
-                 -{record.PorcentajeDescuento}% OFF
+                 -{record.PorcentajeDescuento || record.porcentajeDescuento}% OFF
               </Tag>
           )}
         </Space>
       ),
     },
-    {
-      title: 'Tarifa',
-      key: 'precio',
-      align: 'right',
-      render: (_, record) => {
-        const precioOriginal = record.PrecioDia || 0;
-        const precioFinal = record.PrecioFinal || precioOriginal; 
+{
+  title: 'Tarifa',
+  key: 'precio',
+  align: 'right',
+  render: (_, record) => {
+    // 🔵 CORRECCIÓN: Mapeo correcto de precios
+    const precioOriginal = record.precioDia || record.precioNormal || record.PrecioDia || 0;
+    const precioActual = record.precioActual || record.PrecioFinal || null;
+    const precioFinal = precioActual || precioOriginal;
+    const enPromocion = record.idPromocion && record.porcentajeDescuento;
 
-        return (
-            <div style={{ textAlign: 'right' }}>
-                <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '4px' }}>
-                  Precio por día
+    console.log('🔍 Precio Debug:', {
+      precioDia: record.precioDia,
+      precioNormal: record.precioNormal,
+      precioActual: record.precioActual,
+      precioFinal,
+      enPromocion
+    });
+
+    return (
+        <div style={{ textAlign: 'right' }}>
+            <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '4px' }}>
+              Precio por día
+            </Text>
+            
+            {enPromocion && precioActual && precioActual !== precioOriginal ? (
+                <Text delete type="secondary" style={{ fontSize: '12px', marginRight: 6 }}>
+                    ${parseFloat(precioOriginal).toFixed(2)}
                 </Text>
-                
-                {record.EnPromocion && record.PrecioFinal !== record.PrecioDia ? (
-                    <Text delete type="secondary" style={{ fontSize: '12px', marginRight: 6 }}>
-                        ${parseFloat(precioOriginal).toFixed(2)}
-                    </Text>
-                ) : null}
-                <Text strong style={{ color: record.EnPromocion ? '#ff4d4f' : '#52c41a', fontSize: '18px' }}>
-                    ${parseFloat(precioFinal).toFixed(2)}
-                </Text>
-            </div>
-        );
-      },
-    },
+            ) : null}
+            <Text strong style={{ color: enPromocion ? '#ff4d4f' : '#52c41a', fontSize: '18px' }}>
+                ${parseFloat(precioFinal).toFixed(2)}
+            </Text>
+        </div>
+    );
+  },
+},
     {
       title: '',
       key: 'acciones',
@@ -103,7 +120,7 @@ const CarritoView = ({
           <Tooltip title="Ver detalles">
             <Button 
               icon={<EyeOutlined />} 
-              onClick={() => onVerDetalles && onVerDetalles(record.IdVehiculo)} 
+              onClick={() => onVerDetalles && onVerDetalles(record.IdVehiculo || record.idVehiculo)} // 👈 Soportar ambas
             />
           </Tooltip>
           <Tooltip title="Quitar del carrito">
@@ -139,7 +156,7 @@ const CarritoView = ({
                {vehiculoSeleccionado ? (
                 <Alert
                   message="Vehículo Seleccionado"
-                  description={`Has seleccionado: ${vehiculoSeleccionado.VehiculoNombre}.`}
+                  description={`Has seleccionado: ${vehiculoSeleccionado.VehiculoNombre || vehiculoSeleccionado.marca || 'Vehículo'}.`} 
                   type="success"
                   showIcon
                   style={{ marginBottom: '16px' }}

@@ -176,7 +176,7 @@ const abrirModalCrear = () => {
             )}
 
             {/* 🔹 PAGAR - Solo usuarios finales en estado Pendiente */}
-            {!esAdmin && estado === 'pendiente' && (
+            {!esAdmin && estado === 'Pendiente' && (
                 <Button 
                     type="primary" 
                     size="small" 

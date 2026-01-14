@@ -52,28 +52,36 @@ const CarritoPage = () => {
         cargarCarrito(); 
     }, []);
 
-    useEffect(() => {
-        if (
-            fechasSeleccionadas &&
-            fechasSeleccionadas.length === 2 &&
-            fechasSeleccionadas[0] &&
-            fechasSeleccionadas[1] &&
-            vehiculoSeleccionado
-        ) {
-            const dias = fechasSeleccionadas[1].diff(fechasSeleccionadas[0], 'day');
-            const diasReales = dias > 0 ? dias : 1;
-            setDiasRenta(diasReales);
+useEffect(() => {
+    if (
+        fechasSeleccionadas &&
+        fechasSeleccionadas.length === 2 &&
+        fechasSeleccionadas[0] &&
+        fechasSeleccionadas[1] &&
+        vehiculoSeleccionado
+    ) {
+        const dias = fechasSeleccionadas[1].diff(fechasSeleccionadas[0], 'day');
+        const diasReales = dias > 0 ? dias : 1;
+        setDiasRenta(diasReales);
 
-            const precioDia = vehiculoSeleccionado.PrecioPorDia || vehiculoSeleccionado.PrecioDia || 0;
-            const totalSinIva = precioDia * diasReales;
+        // 🔵 CORRECCIÓN: Mapeo correcto del precio
+        const precioDia = vehiculoSeleccionado.precioDia || 
+                         vehiculoSeleccionado.precioNormal || 
+                         vehiculoSeleccionado.precioActual ||
+                         vehiculoSeleccionado.PrecioDia || 
+                         vehiculoSeleccionado.PrecioPorDia || 0;
+        
+        console.log('🔍 Precio seleccionado:', precioDia, 'Vehículo:', vehiculoSeleccionado);
+        
+        const totalSinIva = precioDia * diasReales;
 
-            setTotalCalculado(totalSinIva); 
+        setTotalCalculado(totalSinIva); 
 
-        } else {
-            setDiasRenta(0);
-            setTotalCalculado(0);
-        }
-    }, [fechasSeleccionadas, vehiculoSeleccionado]);
+    } else {
+        setDiasRenta(0);
+        setTotalCalculado(0);
+    }
+}, [fechasSeleccionadas, vehiculoSeleccionado]);
 
     const cargarCarrito = () => {
         const idCarritoStorage = getCarritoId();
@@ -198,10 +206,10 @@ const CarritoPage = () => {
             // 🔵 PASO 1: Crear el HOLD
             const holdData = {
                 IdUsuario: parseInt(IdUsuario),
-                IdVehiculo: vehiculoSeleccionado.idVehiculo,
+                IdVehiculo: vehiculoSeleccionado.IdVehiculo,
                 FechaInicio: inicio.format('YYYY-MM-DDTHH:mm:ss'),
                 FechaFin: fin.format('YYYY-MM-DDTHH:mm:ss'),
-                HoldSegundos: 0
+                HoldSegundos: 30
             };
 
             console.log('📤 Creando hold:', holdData);
@@ -297,7 +305,7 @@ const CarritoPage = () => {
                                 <p><strong>Precio/Día:</strong> ${vehiculoDetalle.PrecioDia}</p>
                             </Col>
                             <Col span={12}>
-                                <img src={vehiculoDetalle.UrlImagen} alt="auto" style={{width:'100%', borderRadius:8}}/>
+                                <img src={vehiculoDetalle.urlImagen} alt="auto" style={{width:'100%', borderRadius:8}}/>
                             </Col>
                         </Row>
                         <p>{vehiculoDetalle.Descripcion}</p>
