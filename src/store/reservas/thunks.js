@@ -33,17 +33,38 @@ export const fetchReservasIdUsuario = createAsyncThunk(
     }
   }
 );
+// 🆕 CREAR HOLD (paso 1)
+// ============================================================
+export const createHoldThunk = createAsyncThunk(
+  'reserva/createHold',
+  async (holdData, { rejectWithValue }) => {
+    try {
+      console.log('📤 Thunk creando hold:', holdData);
+      const data = await reservaAPI.createHold(holdData);
+      console.log('✅ Hold creado:', data);
+      return data; // Devuelve { IdHold, ... }
+    } catch (error) {
+      const mensajeError = error.message || 'Error al crear hold';
+      console.error('🔴 Error en createHoldThunk:', mensajeError);
+      return rejectWithValue(mensajeError);
+    }
+  }
+);
+
+// ============================================================
+// 🔄 MODIFICAR - CREAR RESERVA (paso 2 - ahora recibe IdHold)
+// ============================================================
 export const createReservaThunk = createAsyncThunk(
   'reserva/create',
-  async (body, { rejectWithValue }) => {
+  async (reservaData, { rejectWithValue }) => {
     try {
-      console.log('📤 Thunk enviando reserva:', body);
-      const data = await reservaAPI.createReserva(body);
+      console.log('📤 Thunk enviando reserva:', reservaData);
+      const data = await reservaAPI.createReserva(reservaData);
       console.log('✅ Thunk recibió respuesta exitosa:', data);
       return data;
     } catch (error) {
       const mensajeError = error.message || 'Error desconocido al crear la reserva';
-      
+      console.error('🔴 Error en createReservaThunk:', mensajeError);
       return rejectWithValue(mensajeError);
     }
   }

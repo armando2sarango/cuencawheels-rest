@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { notification, Modal, Button, Table, Tag, Empty, Typography, Form, Input, Row, Col } from 'antd'; 
 import { FilePdfOutlined, CreditCardOutlined } from '@ant-design/icons';
 import ReservasView from './ReservasView'; 
-import { fetchReservas, fetchReservasIdUsuario, deleteReservaThunk, updateEstadoReservaThunk, createReservaThunk, updateReservaThunk } from '../../store/reservas/thunks';
+import { fetchReservas, fetchReservasIdUsuario, deleteReservaThunk, updateEstadoReservaThunk, createReservaThunk, updateReservaThunk,createHoldThunk  } from '../../store/reservas/thunks';
 import { fetchFacturasByUsuarioThunk, createFacturaThunk } from '../../store/facturas/thunks';
 import { updateVehiculoThunk, fetchVehiculoById, fetchVehiculos } from '../../store/autos/thunks';
 import { fetchUsuarios } from '../../store/usuarios/thunks';
@@ -79,62 +79,73 @@ const vehiculos = vehiculosState.items || [];
         setModalPagoVisible(true);
     };
 
-    const handleProcesarPago = async () => {
+const handleProcesarPago = async () => {
+    try {
+        const values = await formPago.validateFields();
+        setProcesandoPago(true);
+
+        api.info({ 
+            message: 'Procesando Pago...', 
+            description: 'Conectando con el banco y validando datos...', 
+            placement: 'topRight',
+            key: 'pago_proc', 
+            duration: 0 
+        });
+
+        // 🔵 PAYLOAD ACTUALIZADO según la nueva estructura del backend
+        const payloadPago = {
+            IdReserva: reservaAPagar.IdReserva,
+            Metodo: "Transferencia", // o "Tarjeta", según tu lógica
+            Monto: parseFloat(reservaAPagar.Total),
+            FechaPago: new Date().toISOString(),
+            ReferenciaExterna: `REF-${Date.now()}`, // Generar referencia única
+            Estado: "Procesado", // o "Pendiente", según tu flujo
+            CuentaCliente: values.cuentaUsuario,
+            CuentaComercio: CUENTA_EMPRESA
+        };
+
+        console.log('📤 Enviando pago:', payloadPago);
+
+        await dispatch(createPagoThunk(payloadPago)).unwrap();
+        
+        // Actualizar vehículo a "Rentado"
         try {
-            const values = await formPago.validateFields();
-            setProcesandoPago(true);
-
-            api.info({ 
-                message: 'Procesando Pago...', 
-                description: 'Conectando con el banco y validando datos...', 
-                placement: 'topRight',
-                key: 'pago_proc', 
-                duration: 0 
-            });
-
-            const payloadPago = {
-                IdReserva: reservaAPagar.IdReserva,
-                CuentaCliente: values.cuentaUsuario
-            };
-
-            await dispatch(createPagoThunk(payloadPago)).unwrap();
-            
-            try {
-                const vehiculoCompleto = await dispatch(fetchVehiculoById(reservaAPagar.IdVehiculo)).unwrap();
-                if (vehiculoCompleto) {
-                    await dispatch(updateVehiculoThunk({ 
-                        id: reservaAPagar.IdVehiculo, 
-                        body: { ...vehiculoCompleto, Estado: 'Rentado' } 
-                    })).unwrap();
-                }
-            } catch (errVeh) {
-                console.error("Error actualizando vehículo:", errVeh);
+            const vehiculoCompleto = await dispatch(fetchVehiculoById(reservaAPagar.IdVehiculo)).unwrap();
+            if (vehiculoCompleto) {
+                await dispatch(updateVehiculoThunk({ 
+                    id: reservaAPagar.IdVehiculo, 
+                    body: { ...vehiculoCompleto, Estado: 'Rentado' } 
+                })).unwrap();
             }
-
-            api.success({ 
-                message: '¡Pago Exitoso!', 
-                description: 'Tu reserva ha sido confirmada y la factura generada correctamente.',
-                placement: 'topRight',
-                key: 'pago_proc', 
-                duration: 5 
-            });
-
-            setModalPagoVisible(false);
-            setReservaAPagar(null);
-            cargarDatos();
-
-        } catch (error) {
-            api.error({ 
-                message: 'Pago Fallido', 
-                description: getErrorMessage(error), 
-                placement: 'topRight',
-                key: 'pago_proc', 
-                duration: 8 
-            });
-        } finally {
-            setProcesandoPago(false);
+        } catch (errVeh) {
+            console.error("Error actualizando vehículo:", errVeh);
         }
-    };
+
+        api.success({ 
+            message: '¡Pago Exitoso!', 
+            description: 'Tu reserva ha sido confirmada y la factura generada correctamente.',
+            placement: 'topRight',
+            key: 'pago_proc', 
+            duration: 5 
+        });
+
+        setModalPagoVisible(false);
+        setReservaAPagar(null);
+        cargarDatos();
+
+    } catch (error) {
+        console.error('❌ Error en pago:', error);
+        api.error({ 
+            message: 'Pago Fallido', 
+            description: getErrorMessage(error), 
+            placement: 'topRight',
+            key: 'pago_proc', 
+            duration: 8 
+        });
+    } finally {
+        setProcesandoPago(false);
+    }
+};
 
     const handleEliminar = async (id) => {
         try { 
@@ -203,27 +214,69 @@ const vehiculos = vehiculosState.items || [];
         }
     };
 
-    const handleCrearReservaAdmin = async (dto) => {
-        try {
-            await dispatch(createReservaThunk(dto)).unwrap();
-            api.success({
-                message: 'Reserva Creada',
-                description: 'La reserva ha sido creada exitosamente (Estado: Pendiente).',
-                placement: 'topRight',
-                duration: 3,
-            });
-            cargarDatos();
-            return true;
-        } catch(error) {
-            api.error({
-                message: 'Error al Crear Reserva',
-                description: getErrorMessage(error),
-                placement: 'topRight',
-                duration: 4,
-            });
-            return false;
+const handleCrearReservaAdmin = async (dto) => {
+    try {
+        // PASO 1: Crear el HOLD
+        const holdData = {
+            IdUsuario: dto.IdUsuario,
+            IdVehiculo: dto.IdVehiculo,
+            FechaInicio: dto.FechaInicio,
+            FechaFin: dto.FechaFin,
+            HoldSegundos: 300
+        };
+
+        api.info({ 
+            message: 'Procesando...', 
+            description: 'Bloqueando vehículo...', 
+            placement: 'topRight',
+            key: 'creando_reserva', 
+            duration: 0 
+        });
+
+        const holdResult = await dispatch(createHoldThunk(holdData)).unwrap();
+        console.log('✅ Hold creado:', holdResult);
+
+        // 🔵 PASO 2: Extraer idHold (minúscula como viene del backend)
+        const idHold = holdResult.idHold || holdResult.IdHold;
+        
+        if (!idHold) {
+            throw new Error('No se pudo obtener el IdHold del bloqueo');
         }
-    };
+
+        console.log('✅ IdHold extraído:', idHold);
+
+        // PASO 3: Crear la RESERVA
+        const reservaData = {
+            IdHold: idHold  // El backend espera IdHold (mayúscula) en el request
+        };
+
+        console.log('📤 Enviando reservaData:', reservaData);
+        await dispatch(createReservaThunk(reservaData)).unwrap();
+
+        api.success({
+            message: 'Reserva Creada',
+            description: 'La reserva ha sido creada exitosamente (Estado: Pendiente).',
+            placement: 'topRight',
+            key: 'creando_reserva',
+            duration: 3,
+        });
+
+        cargarDatos();
+        return true;
+
+    } catch(error) {
+        console.error('❌ Error:', error);
+        
+        api.error({
+            message: 'Error al Crear Reserva',
+            description: getErrorMessage(error),
+            placement: 'topRight',
+            key: 'creando_reserva',
+            duration: 5,
+        });
+        return false;
+    }
+};
     
     // Función auxiliar para abrir la factura HTML (Mantener)
     const abrirFacturaHTML = (idFactura) => {

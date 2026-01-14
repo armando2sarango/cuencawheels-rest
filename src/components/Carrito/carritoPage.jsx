@@ -5,7 +5,7 @@ import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import CarritoView from './carritoView'; 
 import { fetchCarritos, deleteCarritoThunk } from '../../store/carrito/thunks'; 
-import { createReservaThunk } from '../../store/reservas/thunks';
+import { createReservaThunk, createHoldThunk } from '../../store/reservas/thunks'; // 👈 AGREGAR createHoldThunk
 import { getCarritoId, getUserId } from '../../services/auth'; 
 import { fetchVehiculoById } from '../../store/autos/thunks';
 
@@ -29,21 +29,18 @@ const CarritoPage = () => {
     const [api, contextHolder] = notification.useNotification();
     const IVA_PORCENTAJE = 0.15;
 
-    // ✅ FUNCIÓN DE LIMPIEZA DE ERRORES (Modificada)
+    // ✅ FUNCIÓN DE LIMPIEZA DE ERRORES
     const getErrorMessage = (error) => {
         let rawMsg = 'Error desconocido.';
         
-        // 1. Obtener el mensaje completo
         if (typeof error === 'string') rawMsg = error;
         else if (error?.message) rawMsg = error.message;
         else if (error?.data?.Message) rawMsg = error.data.Message;
         else if (error?.ExceptionMessage) rawMsg = error.ExceptionMessage;
 
-        // 2. Limpiar la ruta del servidor (filtra cualquier texto después de 'en C:\' o primer salto de línea)
         let cleanedMsg = rawMsg.split('en C:\\')[0].trim();
         cleanedMsg = cleanedMsg.split('\n')[0].trim(); 
         
-        // 3. Quitar el prefijo de error SOAP si aún existe
         if (cleanedMsg.includes('System.Web.Services.Protocols.SoapException:')) {
             cleanedMsg = cleanedMsg.replace('System.Web.Services.Protocols.SoapException:', '').trim();
         }
@@ -101,7 +98,6 @@ const CarritoPage = () => {
         } catch (error) {
             api.error({ 
                 message: 'Error al Eliminar', 
-                // ✅ USAMOS getErrorMessage AQUÍ
                 description: getErrorMessage(error),
                 placement: 'topRight',
                 duration: 4,
@@ -126,7 +122,6 @@ const CarritoPage = () => {
         } catch (error) {
             api.error({ 
                 message: 'Error al Cargar Detalles', 
-                // ✅ USAMOS getErrorMessage AQUÍ
                 description: getErrorMessage(error),
                 placement: 'topRight',
                 duration: 4,
@@ -182,54 +177,91 @@ const CarritoPage = () => {
         setIsModalOpen(true);
     };
 
+    // 🔴 FUNCIÓN ACTUALIZADA CON HOLD
     const confirmarReserva = async () => {
+    try {
+        const values = await formFechas.validateFields();
+        const [inicio, fin] = values.fechas;
+        const IdUsuario = getUserId();
+        
+        setProcesando(true);
+
+        api.info({ 
+            message: 'Procesando Reserva...', 
+            description: 'Bloqueando vehículo y creando reserva...', 
+            placement: 'topRight',
+            key: 'procesando_reserva',
+            duration: 0 
+        });
+
         try {
-            const values = await formFechas.validateFields();
-            const [inicio, fin] = values.fechas;
-            const IdUsuario = getUserId();
+            // 🔵 PASO 1: Crear el HOLD
+            const holdData = {
+                IdUsuario: parseInt(IdUsuario),
+                IdVehiculo: vehiculoSeleccionado.idVehiculo,
+                FechaInicio: inicio.format('YYYY-MM-DDTHH:mm:ss'),
+                FechaFin: fin.format('YYYY-MM-DDTHH:mm:ss'),
+                HoldSegundos: 0
+            };
+
+            console.log('📤 Creando hold:', holdData);
+            const holdResult = await dispatch(createHoldThunk(holdData)).unwrap();
+            console.log('✅ Hold creado:', holdResult);
+
+            // 🔵 PASO 2: Extraer idHold
+            const idHold = holdResult.idHold || holdResult.IdHold;
             
-            setProcesando(true);
-
-            try {
-                const payloadReserva = {
-                    IdUsuario: parseInt(IdUsuario),
-                    IdVehiculo: vehiculoSeleccionado.IdVehiculo,
-                    FechaInicio: inicio.format('YYYY-MM-DDTHH:mm:ss'),
-                    FechaFin: fin.format('YYYY-MM-DDTHH:mm:ss'),
-                };
-
-                await dispatch(createReservaThunk(payloadReserva)).unwrap();
-                await dispatch(deleteCarritoThunk(vehiculoSeleccionado.IdItem)).unwrap();
-                
-                api.success({ 
-                    message: 'Reserva Creada', 
-                    description: 'Tu reserva está PENDIENTE. Ve a "Mis Reservas" para realizar el pago y confirmarla.',
-                    placement: 'topRight',
-                    duration: 6,
-                });
-
-                setIsModalOpen(false);
-                setVehiculoSeleccionado(null);
-                setTimeout(() => navigate('/reservas'), 2000);
-
-            } catch (error) {
-                api.error({
-                    message: 'Error al Crear Reserva',
-                    // ✅ USAMOS getErrorMessage AQUÍ
-                    description: getErrorMessage(error),
-                    placement: 'topRight',
-                    duration: 6,
-                });
+            if (!idHold) {
+                throw new Error('No se pudo obtener el IdHold');
             }
+
+            console.log('✅ IdHold extraído:', idHold);
+
+            // 🔵 PASO 3: Crear RESERVA
+            const reservaData = {
+                IdHold: idHold
+            };
+
+            console.log('📤 Creando reserva con:', reservaData);
+            await dispatch(createReservaThunk(reservaData)).unwrap();
+            console.log('✅ Reserva creada exitosamente');
+
+            // 🔵 PASO 4: Eliminar del carrito
+            await dispatch(deleteCarritoThunk(vehiculoSeleccionado.IdItem)).unwrap();
             
-            cargarCarrito();
+            api.success({ 
+                message: 'Reserva Creada', 
+                description: 'Tu reserva está PENDIENTE. Ve a "Mis Reservas" para realizar el pago y confirmarla.',
+                placement: 'topRight',
+                key: 'procesando_reserva',
+                duration: 6,
+            });
+
+            setIsModalOpen(false);
+            setVehiculoSeleccionado(null);
+            setTimeout(() => navigate('/reservas'), 2000);
 
         } catch (error) {
-            // Error de validación del formulario de Ant Design, no necesita notificación personalizada
-        } finally {
-            setProcesando(false);
+            console.error('❌ Error:', error);
+            
+            api.error({
+                message: 'Error al Crear Reserva',
+                description: getErrorMessage(error),
+                placement: 'topRight',
+                key: 'procesando_reserva',
+                duration: 6,
+            });
         }
-    };
+        
+        cargarCarrito();
+
+    } catch (error) {
+        console.error('Error de validación:', error);
+    } finally {
+        setProcesando(false);
+    }
+};
+
 
     const totalConIvaDisplay = totalCalculado * (1 + IVA_PORCENTAJE);
 

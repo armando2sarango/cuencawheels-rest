@@ -38,17 +38,51 @@ export async function getReservaById(id) {
     throw error;
   }
 }
+
+export async function createHold(body) {
+  try {
+    const response = await makeRequest(HttpMethod.POST, '/bloqueosvehiculos', body);
+    if (!response.success) {
+      const mensajeError = response.error || 'Error al crear el hold';
+      throw new Error(mensajeError);
+    }
+    
+    return response.data; // Devuelve el objeto con IdHold
+    
+  } catch (error) {
+    throw error;
+  }
+}
+
+
+
+// ============================================================
+// 🔄 CORREGIR - Crear reserva (NO envolver en 'req')
+// ============================================================
 export async function createReserva(body) {
   try {
-    const response = await makeRequest(HttpMethod.POST, '/reservas', body);
+    // 🔵 Enviar directamente el IdHold SIN envolverlo en 'req'
+    const payload = {
+      IdHold: parseInt(body.IdHold, 10)
+    };
+    
+    console.log('📤 [API] Enviando POST /reservas:', payload);
+    console.log('📤 [API] Tipo de IdHold:', typeof payload.IdHold);
+    
+    const response = await makeRequest(HttpMethod.POST, '/reservas', payload);
+    
+    console.log('✅ [API] Respuesta de /reservas:', response);
+    
     if (!response.success) {
       const mensajeError = response.error || 'Error al crear la reserva';
+      console.error('❌ [API] Error en respuesta:', mensajeError);
       throw new Error(mensajeError);
     }
     
     return response.data;
     
   } catch (error) {
+    console.error('❌ [API] Error en createReserva:', error);
     throw error;
   }
 }

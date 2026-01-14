@@ -6,14 +6,16 @@ import {
   createReservaThunk,
   updateReservaThunk,
   updateEstadoReservaThunk,
-  deleteReservaThunk
+  deleteReservaThunk,createHoldThunk
+  
 } from './thunks';
 
 const initialState = {
   items: [],          // Lista de reservas
   selectedItem: null, // Reserva individual (para detalles)
   loading: false,
-  error: null
+  error: null,
+  currentHold: null, 
 };
 
 const reservasSlice = createSlice({
@@ -25,12 +27,29 @@ const reservasSlice = createSlice({
     },
     clearSelection: (state) => {
       state.selectedItem = null;
-    }
+    },
+    clearHold: (state) => {  // 🆕 Limpiar hold
+    state.currentHold = null;
+  }
   },
   extraReducers: (builder) => {
     builder
       // ============================================================
       // 🔵 FETCH ALL (ADMIN)
+      .addCase(createHoldThunk.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+    })
+    .addCase(createHoldThunk.fulfilled, (state, action) => {
+      state.loading = false;
+      state.currentHold = action.payload; // Guardar hold temporalmente
+      console.log('✅ Hold guardado en slice:', action.payload);
+    })
+    .addCase(createHoldThunk.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload || 'Error al crear hold';
+      console.error('🔴 Error en hold:', state.error);
+    })
       // ============================================================
       .addCase(fetchReservas.pending, (state) => {
         state.loading = true;
@@ -173,5 +192,5 @@ const reservasSlice = createSlice({
   }
 });
 
-export const { clearError, clearSelection } = reservasSlice.actions;
+export const { clearError, clearSelection, clearHold } = reservasSlice.actions;
 export default reservasSlice.reducer;
