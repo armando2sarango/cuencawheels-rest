@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect,useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { notification, Modal } from 'antd'; 
@@ -15,10 +15,8 @@ const AutosPage = () => {
   const navigate = useNavigate();
   const [api, contextHolder] = notification.useNotification();
   const [modal, contextHolderModal] = Modal.useModal();
-  
-  // Estados de Redux
+
   const autosState = useSelector((state) => state.autos);
-  // 🆕 OBTENER ESTADO DEL CARRITO PARA LA VERIFICACIÓN DE DUPLICADOS
   const carritoState = useSelector((state) => state.carrito); 
   
   let vehicles = [];
@@ -36,25 +34,21 @@ const AutosPage = () => {
   const esAdministrador = isAdmin(); 
   const loading = autosState?.loading || false;
   const error = autosState?.error || null;
-  
-  // 🆕 Función auxiliar para recargar el carrito
-  const cargarCarrito = () => {
-      const idUsuario = getUserId();
-      // Solo cargamos el carrito si el usuario está logueado
-      if (idUsuario && fetchCarritos) { 
-          dispatch(fetchCarritos(idUsuario));
-      }
-  };
+const cargarCarrito = useCallback(() => {
+  const idUsuario = getUserId();
+  if (idUsuario) {
+    dispatch(fetchCarritos(idUsuario));
+  }
+}, [dispatch]);
+useEffect(() => {
+  cargarVehiculos();
+  cargarCarrito();
+}, [cargarVehiculos, cargarCarrito]);
 
-  useEffect(() => {
-    cargarVehiculos();
-    // 🆕 Cargar ítems del carrito al montar la página para tener la lista actual
-    cargarCarrito();
-  }, [dispatch]); // Dependencia solo en dispatch para evitar loops
 
-  const cargarVehiculos = () => {
-    dispatch(fetchVehiculos());
-  };
+const cargarVehiculos = useCallback(() => {
+  dispatch(fetchVehiculos());
+}, [dispatch]);
 
   const getErrorMessage = (error) => {
     let msg = 'Error desconocido.';
@@ -109,9 +103,8 @@ const AutosPage = () => {
             placement: 'topRight',
             duration: 3,
         });
-        return true; 
+        return false; 
     }
-    // 🛑 FIN VERIFICACIÓN DE DUPLICADOS
 
     try {
       const respuesta = await dispatch(createCarritoThunk({
@@ -119,7 +112,6 @@ const AutosPage = () => {
           IdVehiculo: idVehiculoNum, 
       })).unwrap();
       
-      // 🛡️ CORRECCIÓN: Solo intentar leer propiedades si 'respuesta' existe
       if (respuesta) { 
           const idCarritoNuevo = respuesta.IdCarrito || respuesta.idCarrito || (respuesta.data && respuesta.data.IdCarrito);
   
@@ -127,13 +119,9 @@ const AutosPage = () => {
               setCarritoId(idCarritoNuevo); 
           } 
       } else {
-          // Si el unwrap() no lanzó error, pero la respuesta es nula, forzamos un error local
-          // (Esto es raro, pero necesario para el manejo seguro)
           throw new Error('La respuesta del servidor fue vacía.');
       }
-      
-      // Actualizar el estado del carrito en Redux después de añadir con éxito
-      cargarCarrito(); 
+            cargarCarrito(); 
 
       api.success({
         message: 'Agregado al carrito',
@@ -144,10 +132,7 @@ const AutosPage = () => {
       return true;
 
     } catch (error) {
-        // Este catch ahora captura:
-        // 1. Errores de red/timeout.
-        // 2. El error de duplicado lanzado por el servidor C# (400 Bad Request).
-        
+
        api.error({
         message: 'Error al agregar',
         description: getErrorMessage(error), // Muestra el mensaje de duplicado del backend
@@ -163,7 +148,6 @@ const AutosPage = () => {
     catch (error) { api.error({ message: 'Error búsqueda', description: getErrorMessage(error) }); }
   };
   
-  // Funciones CRUD
   const handleCrear = async (d) => { try { await dispatch(createVehiculoThunk(d)).unwrap(); dispatch(fetchVehiculos()); api.success({ message: 'Creado', description: 'Éxito' }); return true; } catch (e) { api.error({ message: 'Error', description: getErrorMessage(e) }); return false; } };
   const handleEditar = async (id, d) => { try { await dispatch(updateVehiculoThunk({id, body: d})).unwrap(); dispatch(fetchVehiculos()); api.success({ message: 'Editado', description: 'Éxito' }); return true; } catch (e) { api.error({ message: 'Error', description: getErrorMessage(e) }); return false; } };
   const handleEliminar = async (id) => { try { await dispatch(deleteVehiculoThunk(id)).unwrap(); dispatch(fetchVehiculos()); api.success({ message: 'Eliminado', description: 'Éxito' }); return true; } catch (e) { api.error({ message: 'Error', description: getErrorMessage(e) }); return false; } };

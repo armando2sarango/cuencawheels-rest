@@ -4,7 +4,7 @@ import { Card, Button, Modal, Form, Input, InputNumber, Select, Row, Col, Tag, m
 import { isAdmin } from '../../services/auth';
 import { ExclamationCircleOutlined, EyeOutlined, EditOutlined, DeleteOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, ClearOutlined, ShoppingCartOutlined} from '@ant-design/icons';
 import './Autos.css';
-
+import { validatePlate,validateAnio,validateModelo,validatePrecio,validateImageUrl } from '../../utils/validations';
 const { Option } = Select;
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -469,13 +469,32 @@ const handleSubmit = async () => {
               </Form.Item>
             </Col>
             <Col span={8}>
-              <Form.Item name="Modelo" label="Modelo" rules={[{ required: true }]}>
-                <Input placeholder="Ej: Corolla" />
-              </Form.Item>
+            <Form.Item name="Modelo"label="Modelo"
+            rules={[
+            {
+              validator: (_, value) => {
+                const error = validateModelo(value);
+                return error ? Promise.reject(new Error(error)) : Promise.resolve();
+              }
+            }
+          ]}
+        >
+      <Input placeholder="Ej: Corolla" />
+    </Form.Item>
+
+
             </Col>
             <Col span={8}>
-              <Form.Item name="Anio" label="Año" rules={[{ required: true }]}>
-                <InputNumber placeholder="2024" min={1900} max={2030} style={{ width: '100%' }} />
+            <Form.Item name="Anio"label="Año"
+            rules={[
+              {
+                validator: (_, value) => {
+                  const error = validateAnio(value);
+                  return error ? Promise.reject(new Error(error)) : Promise.resolve();
+                }
+              }
+            ]}
+          >
               </Form.Item>
             </Col>
           </Row>
@@ -509,17 +528,42 @@ const handleSubmit = async () => {
 
           <Row gutter={16}>
             <Col span={8}>
-              <Form.Item name="PrecioDia" label="Precio por día" rules={[{ required: true }]}>
-                <InputNumber placeholder="50.00" min={0} step={0.01} precision={2} style={{ width: '100%' }} prefix="$" />
+              <Form.Item name="PrecioDia" label="Precio por día"
+                rules={[
+                  {
+                    validator: (_, value) => {
+                      const error = validatePrecio(value);
+                      return error ? Promise.reject(new Error(error)) : Promise.resolve();
+                    }
+                  }
+                ]}
+              >
               </Form.Item>
             </Col>   
           </Row>
 
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="Matricula" label="Matrícula">
-                <Input placeholder="ABC-1234" />
-              </Form.Item>
+            <Form.Item
+  name="Matricula"
+  label="Matrícula"
+  rules={[
+    {
+      validator: (_, value) => {
+        const error = validatePlate(value);
+        return error ? Promise.reject(new Error(error)) : Promise.resolve();
+      }
+    }
+  ]}
+>
+  <Input
+    placeholder="ABC-1234"
+    onChange={(e) => {
+      form.setFieldValue('Matricula', e.target.value.toUpperCase());
+    }}
+  />
+</Form.Item>
+
             </Col>
             <Col span={12}>
               <Form.Item name="Estado" label="Estado" rules={[{ required: true }]}>
@@ -544,8 +588,18 @@ const handleSubmit = async () => {
               </Form.Item>
             </Col>
           </Row>
+          <Form.Item name="UrlImagen" label="URL de Imagen"
+            rules={[
+              {
+                validator: (_, value) => {
+                  if (!value) return Promise.resolve();
 
-          <Form.Item name="UrlImagen" label="URL de Imagen">
+                  const error = validateImageUrl(value);
+                  return error ? Promise.reject(new Error(error)) : Promise.resolve();
+                }
+              }
+            ]}
+          >
             <Input placeholder="https://ejemplo.com/imagen.jpg" />
           </Form.Item>
 
