@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'; 
 import { useDispatch, useSelector } from 'react-redux';
-import { notification, Modal, Button, Table, Tag, Empty, Typography, Form, Input, Row, Col } from 'antd'; 
-import { FilePdfOutlined, CreditCardOutlined } from '@ant-design/icons';
+import { notification, Modal, Button, Table,Empty, Typography, Form, Input, Row, Col } from 'antd'; 
+import { FilePdfOutlined} from '@ant-design/icons';
 import ReservasView from './ReservasView'; 
 import { fetchReservas, fetchReservasIdUsuario, deleteReservaThunk, updateEstadoReservaThunk, createReservaThunk, updateReservaThunk,createHoldThunk  } from '../../store/reservas/thunks';
 import { fetchFacturasByUsuarioThunk, createFacturaThunk,fetchFacturas } from '../../store/facturas/thunks';

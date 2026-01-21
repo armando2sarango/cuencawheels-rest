@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
 import { 
-  Table, Card, Tag, Button, Space, Popconfirm, Tooltip, Typography, Empty, Modal, Form, Select, DatePicker, Row, Col 
+  Table, Card, Tag, Button, Space, Popconfirm, Tooltip, Typography, Empty, Modal, Form, Select, DatePicker 
 } from 'antd';
-import { 
-  CloseCircleOutlined, DeleteOutlined, SyncOutlined, CarOutlined, EditOutlined, // 👈 Agregar EditOutlined
-  CheckOutlined, FlagOutlined, FileTextOutlined, CreditCardOutlined, PlusOutlined
+import {DeleteOutlined, SyncOutlined, CarOutlined, EditOutlined,FlagOutlined, FileTextOutlined, CreditCardOutlined, PlusOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
