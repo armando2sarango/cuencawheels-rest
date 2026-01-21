@@ -89,16 +89,16 @@ const AutosView = ({
         Marca: auto.marca || '',
         Modelo: auto.modelo || '',
         Anio: auto.anio || new Date().getFullYear(),
-        IdCategoria: auto.IdCategoria || undefined,
-        IdTransmision: auto.IdTransmision || undefined,
+        IdCategoria: auto.idCategoria || undefined,
+        IdTransmision: auto.idTransmision || undefined,
         Capacidad: auto.capacidad || 5,
         PrecioDia: parseFloat(auto.precioDia) || 0,
         Matricula: auto.matricula || '',
         Estado: auto.estado || 'Disponible',
-        Descripcion: auto.Descripcion || '',
+        Descripcion: auto.descripcion|| '',
         IdSucursal: auto.idSucursal || undefined,
         UrlImagen: auto.urlImagen || '',
-        PorcentajeDescuento: auto.PorcentajeDescuento || 0
+        PorcentajeDescuento: auto.porcentajeDescuento || 0
       });
     } else {
       form.resetFields();
@@ -174,6 +174,10 @@ const AutosView = ({
         message.error('La marca es requerida');
         return;
       }
+      if (!payload.Descripcion) { // Nota: aquí sí usas Mayúscula porque viene del form values
+    message.error('La descripción es requerida');
+    return;
+}
       if (!payload.modelo) {
         message.error('El modelo es requerido');
         return;
@@ -672,7 +676,11 @@ const AutosView = ({
             <Input placeholder="https://ejemplo.com/imagen.jpg" />
           </Form.Item>
 
-          <Form.Item name="Descripcion" label="Descripción">
+          <Form.Item name="Descripcion" label="Descripción"
+          rules={[
+              { required: true, message: 'La descripción es requerida' },
+              { min: 10, message: 'La descripción debe tener al menos 10 caracteres' } // Opcional: validación de longitud
+            ]}>
             <TextArea rows={3} placeholder="Descripción del vehículo..." />
           </Form.Item>
         </Form>
