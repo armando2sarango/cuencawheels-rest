@@ -11,8 +11,18 @@ const { TextArea } = Input;
 const { Text } = Typography;
 
 const AutosView = ({ 
-  autos = [], loading, error, onEditar, onEliminar, onCrear, onBuscar, onRefresh, onAgregarCarrito, checkAuth
+  autos = [], 
+  loading, 
+  // quitamos 'error' porque no se usa
+  onEditar, 
+  onEliminar, 
+  onCrear, 
+  // quitamos 'onBuscar' porque usas filtrado local
+  onRefresh, 
+  onAgregarCarrito, 
+  checkAuth
 }) => {
+
   const userIsAdmin = isAdmin(); 
   
   const [modalVisible, setModalVisible] = useState(false);
