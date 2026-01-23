@@ -1,10 +1,9 @@
-import React, { useEffect,useCallback } from 'react';
+import React, { useEffect} from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { notification, Modal } from 'antd'; 
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 import AutosView from './AutosView';
-// 🆕 Asegúrate de importar fetchCarritoItems si existe en tu thunks de carrito
 import { createCarritoThunk, fetchCarritos } from '../../store/carrito/thunks'; 
 import { fetchVehiculos,createVehiculoThunk, updateVehiculoThunk, deleteVehiculoThunk, buscarVehiculosThunk } from '../../store/autos/thunks';
 import { getUserId, setCarritoId, isAdmin, isAuthenticated } from '../../services/auth';
@@ -27,8 +26,6 @@ const AutosPage = () => {
       vehicles = [autosState.items];
     }
   }
-
-  // 🆕 Extraer ítems del carrito (asumiendo que están en carritoState.items)
   const carritoItems = carritoState?.items || [];
   
   const esAdministrador = isAdmin(); 
@@ -36,16 +33,15 @@ const AutosPage = () => {
   const error = autosState?.error || null;
  const cargarCarrito = () => {
       const IdUsuario = getUserId();
-      // Solo cargamos el carrito si el usuario está logueado
       if (IdUsuario && fetchCarritos) { 
           dispatch(fetchCarritos(IdUsuario));
       }
   };
   useEffect(() => {
     cargarVehiculos();
-    // 🆕 Cargar ítems del carrito al montar la página para tener la lista actual
+
     cargarCarrito();
-  }, [dispatch]); // Dependencia solo en dispatch para evitar loops
+  }, [dispatch]); 
 
 
   const cargarVehiculos = () => {
@@ -81,23 +77,17 @@ const AutosPage = () => {
     
     return true;
   };
-
-  // 🆕 LÓGICA CORREGIDA PARA AGREGAR AL CARRITO (CON VERIFICACIÓN DE DUPLICADOS)
   const handleAgregarCarrito = async (idVehiculo) => {
     const IdUsuario = getUserId(); 
     if (!IdUsuario) {
         console.error("Error lógico: handleAgregarCarrito llamado sin usuario");
         return false; 
     }
-
-    // 🛑 VERIFICACIÓN DE DUPLICADOS (Frontend)
-    // Usamos parseFloat para asegurar que los IDs sean tratados como números.
     const idVehiculoNum = parseFloat(idVehiculo);
     
     const vehiculoYaEnCarrito = carritoItems.some(item => 
         parseFloat(item.IdVehiculo) === idVehiculoNum
     );
-
     if (vehiculoYaEnCarrito) {
         api.warning({
             message: 'Ya está en el carrito',
@@ -107,7 +97,6 @@ const AutosPage = () => {
         });
         return false; 
     }
-
     try {
       const respuesta = await dispatch(createCarritoThunk({
           IdUsuario: IdUsuario, 
