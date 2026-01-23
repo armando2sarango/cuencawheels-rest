@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react'; 
+import React, { useEffect, useState,useCallback  } from 'react'; 
 import { useDispatch, useSelector } from 'react-redux';
 import { notification, Modal, Button, Table,Empty, Typography, Form, Input, Row, Col } from 'antd'; 
 import { FilePdfOutlined} from '@ant-design/icons';
 import ReservasView from './ReservasView'; 
 import { fetchReservas, fetchReservasIdUsuario, deleteReservaThunk, updateEstadoReservaThunk, createReservaThunk, updateReservaThunk,createHoldThunk  } from '../../store/reservas/thunks';
-import { fetchFacturasByUsuarioThunk, createFacturaThunk,fetchFacturas } from '../../store/facturas/thunks';
+import { createFacturaThunk, fetchFacturas } from '../../store/facturas/thunks';
 import { updateVehiculoThunk, fetchVehiculoById, fetchVehiculos } from '../../store/autos/thunks';
 import { fetchUsuarios } from '../../store/usuarios/thunks';
 import { createPagoThunk } from '../../store/pagos/thunks'; 
@@ -33,21 +33,23 @@ const vehiculos = vehiculosState.items || [];
     const CUENTA_EMPRESA = "1756177158"; 
     const NOMBRE_CUENTA_EMPRESA = "Cuenca Wheels";
 
-    useEffect(() => {
-        cargarDatos();
-        if (esAdministrador) {
-            dispatch(fetchUsuarios());
-            dispatch(fetchVehiculos());
-        }
-    }, [esAdministrador, dispatch]);
+useEffect(() => {
+    cargarDatos();
+    if (esAdministrador) {
+        dispatch(fetchUsuarios());
+        dispatch(fetchVehiculos());
+    }
+}, [esAdministrador, dispatch, cargarDatos]);
 
-    const cargarDatos = () => {
-        if (esAdministrador) {
-            dispatch(fetchReservas());
-        } else if (idUsuarioSesion) {
-            dispatch(fetchReservasIdUsuario(idUsuarioSesion));
-        }
-    };
+
+const cargarDatos = useCallback(() => {
+    if (esAdministrador) {
+        dispatch(fetchReservas());
+    } else if (idUsuarioSesion) {
+        dispatch(fetchReservasIdUsuario(idUsuarioSesion));
+    }
+}, [dispatch, esAdministrador, idUsuarioSesion]);
+
 
     // ✅ FUNCIÓN DE LIMPIEZA DE ERRORES (Filtrado de rutas de servidor)
     const getErrorMessage = (error) => {
@@ -360,23 +362,6 @@ const handleCrearReservaAdmin = async (dto) => {
         return false;
     }
 };
-    
-    // Función auxiliar para abrir la factura HTML (Mantener)
-    const abrirFacturaHTML = (idFactura) => {
-        const ventana = window.open('', '_blank');
-        ventana.document.write('<html><body><p>Cargando factura...</p></body></html>');
-        
-        fetch(`/factura/ver?id=${idFactura}`)
-            .then(res => res.text())
-            .then(html => {
-                ventana.document.open();
-                ventana.document.write(html);
-                ventana.document.close();
-            })
-            .catch(err => {
-                ventana.document.write('<p>Error al cargar la factura</p>');
-            });
-    };
 
 const handleCambiarEstado = async (id, estado, registro) => {
     try {

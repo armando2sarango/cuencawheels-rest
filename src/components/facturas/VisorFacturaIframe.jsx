@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 // ⚠️ IMPORTANTE: Necesitas esta nueva función para llamar al endpoint /html
 import { getFacturaHtmlContent } from '../../store/facturas/restCalls'; 
@@ -11,11 +11,8 @@ const VisorFacturaIframe = () => {
   
   const [searchParams] = useSearchParams();
   const idFactura = searchParams.get('id');
-
-  // Nota: El endpoint /html de tu backend asume que se le pasa un ID de factura (int).
   
   useEffect(() => {
-    // Limpiar el Blob URL al desmontar para liberar memoria
     return () => {
       if (urlFactura && urlFactura.startsWith('blob:')) {
         URL.revokeObjectURL(urlFactura);
@@ -23,60 +20,53 @@ const VisorFacturaIframe = () => {
     };
   }, [urlFactura]);
 
-  useEffect(() => {
-    if (!idFactura) {
-      setError('No se proporcionó un ID de factura');
-      setLoading(false);
-      return;
-    }
+useEffect(() => {
+  if (!idFactura) {
+    setError('No se proporcionó un ID de factura');
+    setLoading(false);
+    return;
+  }
 
-    cargarContenidoFactura(idFactura);
-  }, [idFactura]);
+  cargarContenidoFactura(idFactura);
+}, [idFactura, cargarContenidoFactura]);
 
-  const cargarContenidoFactura = async (id) => {
-    // Limpiar Blob URL anterior si existe
-    if (urlFactura && urlFactura.startsWith('blob:')) {
-      URL.revokeObjectURL(urlFactura);
-      setUrlFactura('');
-    }
 
-    try {
-      setLoading(true);
-      
-      // 🚀 NUEVO ENFOQUE: Llamar al endpoint del backend que ya descarga el HTML (getFacturaHtmlContent)
-      // Esto evita la doble llamada y el backend maneja la URL rota de Supabase.
-      const htmlText = await getFacturaHtmlContent(parseInt(id, 10));
+const cargarContenidoFactura = useCallback(async (id) => {
+  if (urlFactura && urlFactura.startsWith('blob:')) {
+    URL.revokeObjectURL(urlFactura);
+    setUrlFactura('');
+  }
 
-      if (!htmlText) {
-        throw new Error('El contenido de la factura está vacío o no se pudo descargar.');
-      }
-      
-      // Si llega aquí, asumimos que 'htmlText' es el contenido HTML puro.
-      
-      // Crear un Blob URL local para mostrar en el iframe
-      const blob = new Blob([htmlText], { type: 'text/html' });
-      const localUrl = URL.createObjectURL(blob);
-      
-      setTipoDato('html'); // Siempre es HTML cuando se usa este endpoint
-      setUrlFactura(localUrl);
-      
-      setLoading(false);
+  try {
+    setLoading(true);
 
-    } catch (err) {
-      console.error('Error cargando factura:', err);
-      
-      // Mostrar el mensaje de error del backend (si existe)
-      let errorMessage = err.message || 'Error al conectar con el servicio.';
-      
-      // Si el error contiene la excepción de C# (e.g., "Error al descargar: 404 Not Found")
-      if (err.message && err.message.includes('Error al descargar')) {
-          errorMessage = 'Error en el backend al descargar el archivo desde la nube.';
-      }
+    const htmlText = await getFacturaHtmlContent(parseInt(id, 10));
 
-      setError(errorMessage);
-      setLoading(false);
-    }
-  };
+    if (!htmlText) {
+      throw new Error('El contenido de la factura está vacío o no se pudo descargar.');
+    }
+
+    const blob = new Blob([htmlText], { type: 'text/html' });
+    const localUrl = URL.createObjectURL(blob);
+
+    setTipoDato('html');
+    setUrlFactura(localUrl);
+    setLoading(false);
+
+  } catch (err) {
+    console.error('Error cargando factura:', err);
+
+    let errorMessage = err.message || 'Error al conectar con el servicio.';
+
+    if (err.message && err.message.includes('Error al descargar')) {
+      errorMessage = 'Error en el backend al descargar el archivo desde la nube.';
+    }
+
+    setError(errorMessage);
+    setLoading(false);
+  }
+}, [urlFactura]);
+
 
   if (loading) {
     return (
